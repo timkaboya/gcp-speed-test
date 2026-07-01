@@ -5,7 +5,32 @@
     <title>GCP Speed Test</title>
     <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Test latency from your browser to Google Cloud regions worldwide and find the closest, fastest GCP datacenter."
+    />
+    <meta name="theme-color" content="#0b57d0" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <link rel="apple-touch-icon" href="favicon.ico" />
+    <link rel="manifest" href="site.webmanifest" />
+
+    <!-- Default social cards (per-page tags are set at runtime by SeoService) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="GCP Speed Test" />
+    <meta property="og:title" content="GCP Speed Test — Google Cloud Latency Test" />
+    <meta
+      property="og:description"
+      content="Test latency from your browser to Google Cloud regions worldwide and find the closest, fastest GCP datacenter."
+    />
+    <meta property="og:url" content="https://www.gcpspeed.com/" />
+    <meta property="og:image" content="https://www.gcpspeed.com/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="GCP Speed Test — Google Cloud Latency Test" />
+    <meta
+      name="twitter:description"
+      content="Test latency from your browser to Google Cloud regions worldwide and find the closest, fastest GCP datacenter."
+    />
+    <meta name="twitter:image" content="https://www.gcpspeed.com/og-image.png" />
     <!-- Critical inline CSS: prevent desktop sidebar from flashing on mobile before Tailwind loads -->
     <style>
       aside[data-desktop-nav] {
@@ -21,9 +46,26 @@
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "WebSite",
-        "name": "GCP Speed Test",
-        "url": "https://www.gcpspeed.com"
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "name": "GCP Speed Test",
+            "url": "https://www.gcpspeed.com",
+            "description": "Test latency from your browser to Google Cloud regions worldwide and find the closest, fastest GCP datacenter."
+          },
+          {
+            "@type": "SoftwareApplication",
+            "name": "GCP Speed Test",
+            "url": "https://www.gcpspeed.com",
+            "applicationCategory": "UtilitiesApplication",
+            "operatingSystem": "Any (web browser)",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            }
+          }
+        ]
       }
     </script>
   </head>
