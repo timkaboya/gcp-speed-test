@@ -49,7 +49,7 @@ jobs:
       id-token: write # required for Workload Identity Federation (Option A)
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # --- Authenticate to Google Cloud (choose ONE, then uncomment) ---------
       # Option A — Workload Identity Federation:
@@ -66,7 +66,7 @@ jobs:
       #     credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Setup gcloud
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
         with:
           project_id: ${{ inputs.project_id }}
 
