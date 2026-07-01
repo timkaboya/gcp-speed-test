@@ -1,5 +1,4 @@
 import { provideHttpClient } from '@angular/common/http'
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing'
 import { PLATFORM_ID } from '@angular/core'
 import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { provideRouter } from '@angular/router'
@@ -60,15 +59,14 @@ describe('LatencyComponent', () => {
       imports: [LatencyComponent],
       providers: [
         provideHttpClient(),
-        provideHttpClientTesting(),
         provideRouter([]),
         { provide: PLATFORM_ID, useValue: 'browser' }
       ]
     })
-    // RegionService loads endpoints on construction; keep the region list empty
-    // so the URL-restore effect stays inert for these unit tests.
+    // RegionService now loads its region list synchronously from the bundled
+    // endpoints data, so there is no HTTP request to flush here. Tests that need
+    // an active selection set component state directly.
     fixture = TestBed.createComponent(LatencyComponent)
-    TestBed.inject(HttpTestingController).expectOne('assets/data/endpoints.json').flush([])
     component = fixture.componentInstance
   })
 

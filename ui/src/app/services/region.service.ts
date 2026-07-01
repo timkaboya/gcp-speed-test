@@ -1,7 +1,6 @@
-import { isPlatformBrowser } from '@angular/common'
-import { HttpClient } from '@angular/common/http'
-import { computed, inject, Injectable, PLATFORM_ID, Signal, signal } from '@angular/core'
+import { computed, Injectable, Signal, signal } from '@angular/core'
 
+import endpointsData from '../../assets/data/endpoints.json'
 import { RegionModel } from '../models'
 
 export interface RegionGroup {
@@ -13,12 +12,14 @@ export interface RegionGroup {
   providedIn: 'root'
 })
 export class RegionService {
-  private readonly http = inject(HttpClient)
-  private readonly platformId = inject(PLATFORM_ID)
-  private readonly isBrowser = isPlatformBrowser(this.platformId)
   private readonly regionCollator = new Intl.Collator('en', { sensitivity: 'base' })
 
-  private readonly regionsState = signal<RegionModel[]>([])
+  // Region data is baked into the bundle (generated `endpoints.json`) and loaded
+  // synchronously so the region grid is present during prerender and on the very
+  // first client render. Fetching it async caused a large layout shift (CLS) as
+  // the empty grid populated after hydration. The ping test itself stays
+  // browser-only and is guarded where it runs, not here.
+  private readonly regionsState = signal<RegionModel[]>(endpointsData as RegionModel[])
   readonly regions: Signal<RegionModel[]> = this.regionsState.asReadonly()
 
   private readonly selectedRegionsState = signal<RegionModel[]>([])
@@ -48,18 +49,6 @@ export class RegionService {
       }))
       .sort((a, b) => b.regions.length - a.regions.length)
   })
-
-  constructor() {
-    // Endpoints have no CORS, so we load the pre-generated list same-origin via
-    // HttpClient rather than hitting the gcping API at runtime. Only the browser
-    // needs the data (the ping test is browser-only); the server renders a shell.
-    if (this.isBrowser) {
-      this.http.get<RegionModel[]>('assets/data/endpoints.json').subscribe({
-        next: (regions) => this.regionsState.set(Array.isArray(regions) ? regions : []),
-        error: () => this.regionsState.set([])
-      })
-    }
-  }
 
   updateSelectedRegions(regions: RegionModel[]): void {
     this.selectedRegionsState.set(regions)
