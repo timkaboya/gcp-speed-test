@@ -247,11 +247,12 @@ export class LatencyComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.seoService.setMetaTitle('Google Cloud Latency Test | Measure Cloud Run Region Latency')
-    this.seoService.setMetaDescription(
-      'Test latency from your location to Google Cloud regions worldwide. Measure the round-trip time to Cloud Run regions and find the closest Google Cloud datacenters.'
-    )
-    this.seoService.setCanonicalUrl('https://www.gcpspeed.com/Gcp/Latency')
+    this.seoService.applyPageSeo({
+      title: 'Google Cloud Latency Test | Measure Cloud Run Region Latency',
+      description:
+        'Test latency from your location to Google Cloud regions worldwide. Measure the round-trip time to Cloud Run regions and find the closest Google Cloud datacenters.',
+      path: '/Gcp/Latency'
+    })
     if (this.isBrowser) {
       // Defer Cloudflare metadata fetch until the browser is idle so initial render stays unblocked.
       const globalScope = globalThis as typeof globalThis & {
