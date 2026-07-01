@@ -1,0 +1,5 @@
+# Code owners for gcp-speed-test.
+# Every change to any path requires review and approval from a code owner
+# before it can be merged into `main` (enforced via branch protection).
+
+*       @timkaboya

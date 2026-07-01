@@ -71,6 +71,7 @@ Other UI commands:
 cd ui
 npm run build      # production build
 npm test           # unit tests
+npm run test:ci    # unit tests with coverage + enforced thresholds
 npm run lint       # lint
 ```
 
@@ -202,6 +203,28 @@ terraform -chdir=infra destroy -var "project_id=$PROJECT_ID" -var "image=$IMAGE"
 > **Note:** The default build depends on gcping's public endpoints. gcping is
 > **not an official Google product** and comes with **no SLA**. Deploying your
 > own responders (above) removes that dependency.
+
+## Contributing
+
+Contributions are welcome, but this repository runs a **security-first,
+review-required** workflow. Please read [CONTRIBUTING.md](CONTRIBUTING.md)
+before opening a pull request.
+
+**Key rules (enforced by branch protection on `main`):**
+
+- **`main` is protected — no direct pushes.** Every change must go through a
+  pull request from a feature branch.
+- **All changes require review.** A PR is merged only after it passes the
+  required CI checks **and** is approved by a code owner. Public pull requests
+  are reviewed, not auto-accepted.
+- **Tests + coverage are mandatory.** CI runs `npm run test:ci`, which enforces
+  the coverage thresholds in `ui/angular.json`. A PR that drops coverage below
+  the thresholds fails CI and cannot be merged. Add tests for every module you
+  change.
+- Commits must be signed off (`git commit -s`), and merges use **squash merge**.
+
+Security posture and vulnerability reporting are documented in
+[SECURITY.md](SECURITY.md).
 
 ## Acknowledgements
 

@@ -75,7 +75,32 @@
           "defaultConfiguration": "development"
         },
         "test": {
-          "builder": "@angular/build:unit-test"
+          "builder": "@angular/build:unit-test",
+          "options": {},
+          "configurations": {
+            "ci": {
+              "watch": false,
+              "coverage": true,
+              "coverageReporters": ["text-summary", "lcovonly"],
+              "coverageExclude": [
+                "**/*.spec.ts",
+                "src/main.ts",
+                "src/main.server.ts",
+                "src/server.ts",
+                "src/**/*.config.ts",
+                "src/**/*.config.server.ts",
+                "src/**/*.routes.ts",
+                "src/**/*.routes.server.ts",
+                "src/app/shared/icons/**"
+              ],
+              "coverageThresholds": {
+                "statements": 60,
+                "branches": 60,
+                "functions": 60,
+                "lines": 65
+              }
+            }
+          }
         },
         "lint": {
           "builder": "@angular-eslint/builder:lint",
