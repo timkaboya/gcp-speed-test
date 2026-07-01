@@ -17,10 +17,11 @@ export class GcpRegionsComponent implements OnInit {
   readonly totalRegionCount = computed(() => this.regionService.regions().length)
 
   ngOnInit(): void {
-    this.seoService.setMetaTitle('Google Cloud Regions | GCP Speed Test')
-    this.seoService.setMetaDescription(
-      'Explore Google Cloud regions grouped by geography. See every Cloud Run region available in the GCP Speed Test latency tool.'
-    )
-    this.seoService.setCanonicalUrl('https://www.gcpspeed.com/Information/GcpRegions')
+    this.seoService.applyPageSeo({
+      title: 'Google Cloud Regions | GCP Speed Test',
+      description:
+        'Explore Google Cloud regions grouped by geography. See every Cloud Run region available in the GCP Speed Test latency tool.',
+      path: '/Information/GcpRegions'
+    })
   }
 }
