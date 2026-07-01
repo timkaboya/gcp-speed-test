@@ -37,15 +37,9 @@
     "tslib": "^2.3.0"
   },
   "devDependencies": {
-<<<<<<< HEAD
     "@angular/build": "^22.0.4",
     "@angular/cli": "^22.0.4",
     "@angular/compiler-cli": "^22.0.4",
-=======
-    "@angular/build": "^22.0.0",
-    "@angular/cli": "^22.0.0",
-    "@angular/compiler-cli": "^22.0.0",
->>>>>>> origin/main
     "@ianvs/prettier-plugin-sort-imports": "^4.7.0",
     "@tailwindcss/postcss": "^4.1.12",
     "@types/express": "^5.0.1",
@@ -53,23 +47,14 @@
     "@types/node": "^26.0.1",
     "@vitest/coverage-v8": "^4.1.9",
     "angular-eslint": "^22.0.0",
-<<<<<<< HEAD
     "eslint": "^10.6.0",
-=======
-    "eslint": "^9.39.1",
->>>>>>> origin/main
     "jsdom": "^29.1.1",
     "postcss": "^8.5.3",
     "prettier": "^3.7.4",
     "prettier-plugin-tailwindcss": "^0.8.0",
     "tailwindcss": "^4.1.18",
-<<<<<<< HEAD
     "typescript": "~6.0.3",
-    "typescript-eslint": "8.62.1",
-=======
-    "typescript": "~6.0.0",
     "typescript-eslint": "^8.62.1",
->>>>>>> origin/main
     "vitest": "^4.1.9"
   }
 }
