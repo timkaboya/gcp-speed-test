@@ -95,7 +95,7 @@ own responders. These steps are optimized to cost **≈ $0** by using Cloud Run
 with `min-instances=0` (scale to zero, cold starts acceptable) within the
 [always-free tier][freetier].
 
-> Run everything below under the Google account **`timothy.kaboya@gmail.com`**.
+> Run everything below under your own Google account.
 
 ### 1. Install the tools
 
@@ -106,7 +106,7 @@ with `min-instances=0` (scale to zero, cold starts acceptable) within the
 ### 2. Authenticate and create a fresh project
 
 ```bash
-gcloud auth login                     # sign in as timothy.kaboya@gmail.com
+gcloud auth login                     # sign in with your Google account
 gcloud auth application-default login # credentials for Terraform
 
 PROJECT_ID="gcp-speed-test-$(date +%s)"   # must be globally unique
@@ -212,7 +212,7 @@ terraform -chdir=infra destroy -var "project_id=$PROJECT_ID" -var "image=$IMAGE"
 
 ## License
 
-[MIT](LICENSE) © 2026 Timothy Kaboya
+[MIT](LICENSE) © 2026 gcp-speed-test authors
 
 [azure]: https://github.com/blrchen/azure-speed-test
 [aws]: https://github.com/blrchen/aws-speed-test
