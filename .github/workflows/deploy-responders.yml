@@ -49,7 +49,7 @@ jobs:
       id-token: write # required for Workload Identity Federation (Option A)
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # --- Authenticate to Google Cloud (choose ONE, then uncomment) ---------
       # Option A — Workload Identity Federation:
