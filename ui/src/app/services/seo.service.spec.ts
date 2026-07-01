@@ -41,4 +41,53 @@ describe('SeoService', () => {
     expect(links).toHaveLength(1)
     expect(links[0].getAttribute('href')).toBe('https://example.com/two')
   })
+
+  it('sets Open Graph and Twitter social tags', () => {
+    const meta = TestBed.inject(Meta)
+    service.setSocialTags(
+      'Card Title',
+      'Card description',
+      'https://example.com/x',
+      'https://img/y.png'
+    )
+
+    expect(meta.getTag('property="og:title"')?.content).toBe('Card Title')
+    expect(meta.getTag('property="og:description"')?.content).toBe('Card description')
+    expect(meta.getTag('property="og:url"')?.content).toBe('https://example.com/x')
+    expect(meta.getTag('property="og:image"')?.content).toBe('https://img/y.png')
+    expect(meta.getTag('property="og:type"')?.content).toBe('website')
+    expect(meta.getTag('name="twitter:card"')?.content).toBe('summary_large_image')
+    expect(meta.getTag('name="twitter:title"')?.content).toBe('Card Title')
+    expect(meta.getTag('name="twitter:image"')?.content).toBe('https://img/y.png')
+  })
+
+  it('applyPageSeo sets title, description, canonical and social tags for a path', () => {
+    const meta = TestBed.inject(Meta)
+    service.applyPageSeo({
+      title: 'Page Title',
+      description: 'Page description',
+      path: '/Gcp/Latency'
+    })
+
+    expect(TestBed.inject(Title).getTitle()).toBe('Page Title')
+    expect(meta.getTag('name="description"')?.content).toBe('Page description')
+    const canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')
+    expect(canonical?.getAttribute('href')).toBe('https://www.gcpspeed.com/Gcp/Latency')
+    expect(meta.getTag('property="og:url"')?.content).toBe('https://www.gcpspeed.com/Gcp/Latency')
+    expect(meta.getTag('property="og:image"')?.content).toBe(
+      'https://www.gcpspeed.com/og-image.png'
+    )
+  })
+
+  it('applyPageSeo honours a custom social image', () => {
+    const meta = TestBed.inject(Meta)
+    service.applyPageSeo({
+      title: 'T',
+      description: 'D',
+      path: '/Privacy',
+      image: 'https://img/custom.png'
+    })
+
+    expect(meta.getTag('property="og:image"')?.content).toBe('https://img/custom.png')
+  })
 })
