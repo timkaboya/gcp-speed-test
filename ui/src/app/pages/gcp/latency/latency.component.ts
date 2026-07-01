@@ -201,8 +201,9 @@ export class LatencyComponent implements OnInit, OnDestroy {
   }
 
   private registerInitialUrlStateEffect(): void {
-    // Region data loads asynchronously via HttpClient, so we defer resolving any
-    // `regions` query param until the list is available (browser only).
+    // Region data is available synchronously from the bundle, but we still resolve
+    // the `regions` query param inside an effect so the restore runs once the
+    // signal is read and stays resilient if the list is ever empty.
     effect(() => {
       const regions = this.regionService.regions()
       if (this.hasAppliedInitialUrlState || regions.length === 0) {
