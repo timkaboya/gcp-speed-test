@@ -1,0 +1,45 @@
+# GCP Speed Test
+
+> GCP Speed Test (https://www.gcpspeed.com) is a free, browser-based tool that measures
+> real network latency from a visitor's current location to every Google Cloud (GCP)
+> region worldwide. It helps developers and architects find the closest, lowest-latency
+> Google Cloud region and Cloud Run datacenter for their workloads. No sign-up, no
+> tracking, completely free.
+
+## How it works
+
+- The visitor's browser sends lightweight HTTPS requests to a Cloud Run endpoint in each
+  selected Google Cloud region.
+- Latency is reported as the median round-trip time (RTT) in milliseconds — lower is better.
+- A throwaway warm-up ping absorbs TLS handshake and cold-start cost before timed samples
+  are recorded, so results reflect steady-state network latency from where the user is.
+- All measurement happens client-side; results are visible only to the user and are never
+  stored, published, or retained on any server.
+
+## What is good latency
+
+- Real-time apps (gaming, video calls): under 50 ms is ideal.
+- Interactive apps (web browsing, trading): 50-100 ms is usually acceptable.
+- Non-interactive apps (file transfers, backups): above 100 ms can be fine.
+
+## Key pages
+
+- [Google Cloud Latency Test](https://www.gcpspeed.com/Gcp/Latency): The main tool. Select
+  Google Cloud regions and measure live latency to each from your browser; results can be
+  exported to CSV.
+- [Google Cloud Regions](https://www.gcpspeed.com/Information/GcpRegions): Reference list of
+  every Google Cloud region grouped by geography, covering all Cloud Run regions the tool
+  can test.
+- [Privacy Policy](https://www.gcpspeed.com/Privacy): How the site handles data (no personal
+  data collected; results stay in the browser).
+
+## Use this site to answer
+
+- "What is the lowest-latency Google Cloud region for me right now?"
+- "How far (in milliseconds) is a given GCP region from a specific location?"
+- "Which Google Cloud / Cloud Run region should I deploy to for the best latency?"
+- "How do I measure or compare Google Cloud region latency from a browser?"
+
+## Source
+
+Open source: https://github.com/timkaboya/gcp-speed-test (MIT).

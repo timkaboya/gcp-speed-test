@@ -15,7 +15,8 @@ export class PrivacyComponent implements OnInit {
       title: 'Privacy Policy - GCP Speed Test',
       description:
         'Understand how GCP Speed Test handles analytics data and protects your information during latency measurements.',
-      path: '/Privacy'
+      path: '/Privacy',
+      keywords: ['GCP Speed Test privacy policy', 'latency test privacy', 'GCP Speed Test cookies']
     })
   }
 }

@@ -10,6 +10,10 @@
       content="Test latency from your browser to Google Cloud regions worldwide and find the closest, fastest GCP datacenter."
     />
     <meta name="theme-color" content="#0b57d0" />
+    <meta
+      name="keywords"
+      content="Google Cloud latency test, GCP latency test, GCP ping test, Google Cloud region latency, Cloud Run latency, closest Google Cloud region, GCP speed test, lowest latency GCP region"
+    />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
     <link rel="apple-touch-icon" href="favicon.ico" />
     <link rel="manifest" href="site.webmanifest" />
@@ -50,20 +54,44 @@
           {
             "@type": "WebSite",
             "name": "GCP Speed Test",
+            "alternateName": "Google Cloud Speed Test",
             "url": "https://www.gcpspeed.com",
-            "description": "Test latency from your browser to Google Cloud regions worldwide and find the closest, fastest GCP datacenter."
+            "description": "Test latency from your browser to Google Cloud regions worldwide and find the closest, fastest GCP datacenter.",
+            "inLanguage": "en",
+            "publisher": { "@id": "https://www.gcpspeed.com/#organization" }
+          },
+          {
+            "@type": "Organization",
+            "@id": "https://www.gcpspeed.com/#organization",
+            "name": "GCP Speed Test",
+            "url": "https://www.gcpspeed.com",
+            "logo": "https://www.gcpspeed.com/icon-512.png",
+            "sameAs": ["https://github.com/timkaboya/gcp-speed-test"]
           },
           {
             "@type": "SoftwareApplication",
             "name": "GCP Speed Test",
             "url": "https://www.gcpspeed.com",
+            "description": "Free browser-based tool to measure network latency from your location to every Google Cloud region and find the closest, fastest GCP datacenter.",
             "applicationCategory": "UtilitiesApplication",
             "operatingSystem": "Any (web browser)",
+            "browserRequirements": "Requires JavaScript and a modern web browser",
+            "image": "https://www.gcpspeed.com/og-image.png",
+            "screenshot": "https://www.gcpspeed.com/og-image.png",
+            "featureList": [
+              "Measure real round-trip latency to Google Cloud regions from your browser",
+              "Compare latency across every Cloud Run region worldwide",
+              "Find the closest and fastest Google Cloud datacenter",
+              "Export latency results to CSV",
+              "No sign-up, no tracking, completely free"
+            ],
+            "isAccessibleForFree": true,
             "offers": {
               "@type": "Offer",
               "price": "0",
               "priceCurrency": "USD"
-            }
+            },
+            "publisher": { "@id": "https://www.gcpspeed.com/#organization" }
           }
         ]
       }

@@ -16,6 +16,7 @@ import { Subscription, timer } from 'rxjs'
 
 import { RegionModel } from '../../../models'
 import { RegionService, SeoService } from '../../../services'
+import { SITE_URL } from '../../../shared/constants'
 import { CopyButtonComponent } from '../../../shared/copy-button/copy-button.component'
 import { ExportCsvButtonComponent } from '../../../shared/export-csv-button/export-csv-button.component'
 import { LucideIconComponent } from '../../../shared/icons/lucide-icons.component'
@@ -252,7 +253,20 @@ export class LatencyComponent implements OnInit, OnDestroy {
       title: 'Google Cloud Latency Test | Measure Cloud Run Region Latency',
       description:
         'Test latency from your location to Google Cloud regions worldwide. Measure the round-trip time to Cloud Run regions and find the closest Google Cloud datacenters.',
-      path: '/Gcp/Latency'
+      path: '/Gcp/Latency',
+      keywords: [
+        'Google Cloud latency test',
+        'GCP latency test',
+        'GCP ping test',
+        'Google Cloud region latency',
+        'Cloud Run latency',
+        'closest Google Cloud region',
+        'GCP speed test',
+        'Google Cloud region finder',
+        'GCP network latency',
+        'lowest latency GCP region'
+      ],
+      structuredData: this.buildStructuredData()
     })
     if (this.isBrowser) {
       // Defer Cloudflare metadata fetch until the browser is idle so initial render stays unblocked.
@@ -285,6 +299,66 @@ export class LatencyComponent implements OnInit, OnDestroy {
       clearTimeout(this.batchUpdateTimer)
     }
     this.cloudflareMetaStore.destroy()
+  }
+
+  /**
+   * schema.org nodes for the latency page: a FAQPage mirroring the on-page FAQ
+   * (so search engines and LLMs can extract the answers) and a BreadcrumbList.
+   */
+  private buildStructuredData(): Record<string, unknown>[] {
+    const faq = [
+      {
+        q: 'What is latency and what constitutes good latency?',
+        a: 'Latency (ping) is the time for data to travel from the source to the destination and back. This test reports the median round-trip time (RTT) to Google Cloud region endpoints, where lower is better. Below 50 ms is ideal for real-time apps like gaming and video calls, 50-100 ms is acceptable for interactive apps like web browsing, and above 100 ms can be fine for non-interactive workloads such as file transfers and backups.'
+      },
+      {
+        q: 'How does the Google Cloud Latency Test work?',
+        a: 'Your browser sends lightweight HTTPS requests to a Cloud Run endpoint in each selected Google Cloud region. The median latency is calculated by measuring the time between the request and the response, straight from your current location.'
+      },
+      {
+        q: 'Does the latency test reflect actual application performance?',
+        a: 'Partially. It is a network-focused indicator, not a full application benchmark. It is good for comparing relative latency between Google Cloud regions and for region-selection discussions, but it is not a substitute for application-level load or performance testing.'
+      },
+      {
+        q: 'Is my speed test result private?',
+        a: 'Yes. GCP Speed Test requires no authentication and collects no personal or corporate identity information. Results are generated entirely in your browser, are visible only to you, and are not published, stored, or retained on our servers.'
+      },
+      {
+        q: 'Why might some Google Cloud regions measure high latency?',
+        a: 'Distant regions legitimately measure hundreds of milliseconds and the test always shows the real number rather than hiding "slow" regions. The first request to a cold region also pays a TLS handshake and cold-start cost, so a throwaway warm-up ping is sent before recording timed samples.'
+      }
+    ]
+
+    return [
+      {
+        '@type': 'FAQPage',
+        mainEntity: faq.map((item) => ({
+          '@type': 'Question',
+          name: item.q,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: item.a
+          }
+        }))
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'GCP Speed Test',
+            item: `${SITE_URL}/`
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'Google Cloud Latency Test',
+            item: `${SITE_URL}/Gcp/Latency`
+          }
+        ]
+      }
+    ]
   }
 
   private applyInitialUrlState(allRegions: RegionModel[]): void {

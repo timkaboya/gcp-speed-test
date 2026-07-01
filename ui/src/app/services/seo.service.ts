@@ -9,6 +9,14 @@ export interface PageSeo {
   /** Route path beginning with '/', e.g. '/Gcp/Latency'. */
   path: string
   image?: string
+  /** Search keywords for the page. Emitted as a `<meta name="keywords">` tag. */
+  keywords?: string[]
+  /**
+   * schema.org JSON-LD nodes describing the page (e.g. FAQPage, BreadcrumbList).
+   * Injected as a single `<script type="application/ld+json">` so search engines
+   * and LLMs can extract structured answers. Safe to omit.
+   */
+  structuredData?: Record<string, unknown>[]
 }
 
 @Injectable({
@@ -29,6 +37,45 @@ export class SeoService {
     this.setMetaDescription(page.description)
     this.setCanonicalUrl(url)
     this.setSocialTags(page.title, page.description, url, page.image ?? SOCIAL_IMAGE_URL)
+    this.setKeywords(page.keywords)
+    this.setStructuredData(page.structuredData)
+  }
+
+  public setKeywords(keywords?: string[]): void {
+    if (keywords && keywords.length > 0) {
+      this.meta.updateTag({ name: 'keywords', content: keywords.join(', ') })
+    } else {
+      this.meta.removeTag('name="keywords"')
+    }
+  }
+
+  /**
+   * Inject (or replace) the per-page JSON-LD block. Runs during prerendering so
+   * the structured data ships in the static HTML that crawlers and LLMs read.
+   */
+  public setStructuredData(nodes?: Record<string, unknown>[]): void {
+    const head = this.document?.head
+    if (!head) {
+      return
+    }
+
+    const existing = head.querySelector('script[data-seo="page-jsonld"]')
+    if (existing) {
+      existing.remove()
+    }
+
+    if (!nodes || nodes.length === 0) {
+      return
+    }
+
+    const script = this.document.createElement('script')
+    script.setAttribute('type', 'application/ld+json')
+    script.setAttribute('data-seo', 'page-jsonld')
+    script.textContent = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@graph': nodes
+    })
+    head.appendChild(script)
   }
 
   public setMetaTitle(title: string): void {
