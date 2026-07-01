@@ -4,8 +4,7 @@ Measure network latency from your browser to Google Cloud regions worldwide — 
 backendless Angular app inspired by [azure-speed-test][azure] and
 [aws-speed-test][aws].
 
-**Live demo:** _coming soon_ (placeholder — deploy the `ui/` app to your host of
-choice).
+**Live demo:** [www.gcpspeed.com](https://www.gcpspeed.com)
 
 ## What it does
 
