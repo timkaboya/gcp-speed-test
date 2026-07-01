@@ -4,14 +4,7 @@ export type CopyStatus = 'idle' | 'copied' | 'failed'
 
 export const toRegionNameNoSpace = (displayName: string): string => displayName.replace(/\s+/g, '')
 
-export const generateTimestampedBlobName = (): string => {
-  const time = new Date(Date.now())
-  return `${time.getFullYear()}${time.getMonth()}${time.getDate()}${time.getHours()}${time.getMinutes()}${time.getSeconds()}${time.getMilliseconds()}`
-}
-
-export const buildRegionDetailRouterLink = (
-  displayName: string | null | undefined
-): [string, string] => ['/Information/AzureRegions', toRegionNameNoSpace(displayName ?? '')]
+export const buildRegionDetailRouterLink = (): [string] => ['/Information/GcpRegions']
 
 export const createCopyToClipboard = (options?: { resetMs?: number }) => {
   const resetMs = options?.resetMs ?? 3000

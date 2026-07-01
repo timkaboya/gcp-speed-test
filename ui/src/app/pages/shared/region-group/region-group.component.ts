@@ -16,18 +16,18 @@ interface GroupSelectionLookup {
 })
 export class RegionGroupComponent {
   private readonly regionService = inject(RegionService)
-  private readonly allRegions: RegionModel[] = this.regionService.getAllRegions()
+  private readonly regions = this.regionService.regions
   private readonly selectedRegionIds = computed<Set<string>>(() => {
     const selectedRegions = this.regionService.selectedRegions()
     return new Set(selectedRegions.map((region) => region.regionId))
   })
-  readonly regionGroups: RegionGroup[] = this.regionService.getRegionGroups()
+  readonly regionGroups = this.regionService.regionGroups
   private readonly groupSelectionLookup = computed<GroupSelectionLookup>(() => {
     const selected = this.selectedRegionIds()
     const fullySelected = new Set<string>()
     const partiallySelected = new Set<string>()
 
-    for (const group of this.regionGroups) {
+    for (const group of this.regionGroups()) {
       let selectedCount = 0
       for (const region of group.regions) {
         if (selected.has(region.regionId)) {
@@ -53,7 +53,7 @@ export class RegionGroupComponent {
   readonly trackByRegion = (_index: number, region: RegionModel): string => region.regionId
 
   readonly selectedRegionCount = computed(() => this.selectedRegionIds().size)
-  readonly totalRegionCount = this.allRegions.length
+  readonly totalRegionCount = computed(() => this.regions().length)
 
   clearSelection(): void {
     const current = this.selectedRegionIds()
@@ -112,7 +112,7 @@ export class RegionGroupComponent {
 
   private syncRegionService(selection: Set<string>): void {
     const selectedRegions = selection.size
-      ? this.allRegions.filter((region) => selection.has(region.regionId))
+      ? this.regions().filter((region) => selection.has(region.regionId))
       : []
     this.regionService.updateSelectedRegions(selectedRegions)
   }

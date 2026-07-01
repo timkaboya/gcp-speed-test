@@ -6,44 +6,11 @@ import {
   writeResponseToNodeResponse
 } from '@angular/ssr/node'
 import express from 'express'
-import { createProxyMiddleware } from 'http-proxy-middleware'
 
 const browserDistFolder = join(import.meta.dirname, '../browser')
 
 const app = express()
 const angularApp = new AngularNodeAppEngine()
-
-/**
- * Legacy URL redirects (301 permanent)
- * These preserve SEO and handle old bookmarks
- */
-const legacyRedirects: Record<string, string> = {
-  '/Cloud/RegionFinder': '/Azure/IPLookup',
-  '/ChatGPT/AppList': '/ChatGPT/WritingAssistant',
-  '/Information/AzureIpRanges': '/Information/AzureIpRanges/AzureCloud',
-  '/Information/IpRange': '/Information/AzureIpRanges/AzureCloud'
-}
-
-app.use((req, res, next) => {
-  const redirect = legacyRedirects[req.path]
-  if (redirect) {
-    return res.redirect(301, redirect)
-  }
-  next()
-})
-
-/**
- * Proxy /api requests to .NET backend
- */
-app.use(
-  '/api',
-  createProxyMiddleware({
-    target: 'http://localhost:8080',
-    changeOrigin: true,
-    // Express strips the mount path, so we need to prefix /api back before forwarding
-    pathRewrite: (path) => `/api${path}`
-  })
-)
 
 /**
  * Serve static files from /browser

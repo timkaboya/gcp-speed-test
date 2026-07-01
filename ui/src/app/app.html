@@ -17,13 +17,13 @@
     <div class="flex h-14 items-center border-b border-border-soft px-4">
       <a class="flex items-center gap-2 font-bold" routerLink="/">
         <app-lucide-icon name="cloud" class="size-5 text-primary" aria-hidden="true" />
-        <span class="text-sm">Azure Speed Test</span>
+        <span class="text-sm">GCP Speed Test</span>
       </a>
     </div>
 
     <!-- Sidebar Navigation -->
     <div
-      class="flex scrollbar-thin flex-1 flex-col overflow-y-auto px-3 py-4 scrollbar-gutter-stable"
+      class="flex scrollbar-thin flex-1 scrollbar-gutter-stable flex-col overflow-y-auto px-3 py-4"
     >
       <app-nav-groups [navGroups]="navGroups()" class="flex flex-col gap-6 text-sm" />
     </div>
@@ -50,7 +50,7 @@
       <!-- Logo (mobile only - desktop shows in sidebar) -->
       <a class="flex items-center gap-2 font-bold lg:hidden" routerLink="/">
         <app-lucide-icon name="cloud" class="size-5 text-primary" aria-hidden="true" />
-        <span class="text-sm">Azure Speed Test</span>
+        <span class="text-sm">GCP Speed Test</span>
       </a>
 
       <div class="flex-1"></div>
@@ -60,10 +60,10 @@
         <app-theme-toggle />
         <a
           class="icon-button"
-          href="https://github.com/blrchen/azure-speed-test"
+          href="https://github.com/blrchen/gcp-speed-test"
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="Azure Speed Test on GitHub"
+          aria-label="GCP Speed Test on GitHub"
         >
           <app-lucide-icon name="github" class="size-5" aria-hidden="true" />
         </a>
@@ -150,7 +150,7 @@
     aria-modal="true"
     aria-label="Primary navigation"
   >
-    <div class="flex scrollbar-thin h-full flex-col overflow-y-auto scrollbar-gutter-stable">
+    <div class="flex scrollbar-thin h-full scrollbar-gutter-stable flex-col overflow-y-auto">
       <div class="flex h-14 items-center justify-between border-b border-border-soft px-4">
         <a
           routerLink="/"
@@ -158,7 +158,7 @@
           (click)="closeMobileNav()"
         >
           <app-lucide-icon name="cloud" class="size-4 text-primary" aria-hidden="true" />
-          <span>Azure Speed Test</span>
+          <span>GCP Speed Test</span>
         </a>
         <button
           type="button"

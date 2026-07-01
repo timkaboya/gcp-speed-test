@@ -3,15 +3,11 @@ import { Routes } from '@angular/router'
 export const routes: Routes = [
   {
     path: '',
-    loadComponent: () => import('./pages/azure/azure.component').then((_) => _.AzureComponent),
+    loadComponent: () => import('./pages/gcp/gcp.component').then((_) => _.GcpComponent),
     children: [
       {
-        path: 'Azure',
-        loadChildren: () => import('./pages/azure/azure-routes').then((_) => _.AZURE_ROUTES)
-      },
-      {
-        path: 'ChatGPT',
-        loadChildren: () => import('./pages/chatgpt/chatgpt-routes').then((_) => _.CHATGPT_ROUTES)
+        path: 'Gcp',
+        loadChildren: () => import('./pages/gcp/gcp-routes').then((_) => _.GCP_ROUTES)
       },
       {
         path: 'Information',
@@ -25,14 +21,13 @@ export const routes: Routes = [
       },
       {
         path: '',
-        redirectTo: 'Azure',
+        redirectTo: 'Gcp/Latency',
         pathMatch: 'full'
       }
     ]
   },
   {
     path: '**',
-    redirectTo: 'Azure',
-    pathMatch: 'full'
+    redirectTo: 'Gcp/Latency'
   }
 ]

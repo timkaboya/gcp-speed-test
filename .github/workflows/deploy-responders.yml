@@ -1,0 +1,111 @@
+name: Deploy responders
+
+# Manual only. This workflow provisions per-region Cloud Run responders via
+# Terraform. It will NOT run until you configure GCP authentication below.
+on:
+  workflow_dispatch:
+    inputs:
+      project_id:
+        description: "Target GCP project ID"
+        required: true
+      apply:
+        description: "Set to 'true' to actually apply (otherwise plan only)"
+        required: true
+        default: "false"
+
+# ---------------------------------------------------------------------------
+# BEFORE THIS WORKS you must configure ONE of the following and wire it up in
+# the "Authenticate to Google Cloud" step:
+#
+#   Option A (recommended) — Workload Identity Federation (keyless):
+#     - Create a Workload Identity Pool + provider for GitHub Actions.
+#     - Grant a deploy service account roles/run.admin,
+#       roles/artifactregistry.admin, roles/iam.serviceAccountUser,
+#       roles/serviceusage.serviceUsageAdmin.
+#     - Add repo secrets:
+#         GCP_WORKLOAD_IDENTITY_PROVIDER  (projects/.../providers/...)
+#         GCP_SERVICE_ACCOUNT             (deploy@PROJECT.iam.gserviceaccount.com)
+#
+#   Option B — Service account JSON key:
+#     - Add repo secret GCP_SA_KEY containing the JSON key.
+#
+# The auth step below is commented out. Uncomment the variant you configured.
+# The guard job keeps the workflow from failing silently when unconfigured.
+# ---------------------------------------------------------------------------
+
+env:
+  ARTIFACT_REGION: us-central1
+  ARTIFACT_REPO: speedtest
+  IMAGE_NAME: responder
+
+jobs:
+  deploy:
+    name: Build image & apply Terraform
+    runs-on: ubuntu-latest
+    # Uncomment once GCP auth is configured, then remove this guard:
+    if: ${{ vars.GCP_CONFIGURED == 'true' }}
+    permissions:
+      contents: read
+      id-token: write # required for Workload Identity Federation (Option A)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # --- Authenticate to Google Cloud (choose ONE, then uncomment) ---------
+      # Option A — Workload Identity Federation:
+      # - name: Authenticate to Google Cloud
+      #   uses: google-github-actions/auth@v2
+      #   with:
+      #     workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      #     service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      #
+      # Option B — Service account key:
+      # - name: Authenticate to Google Cloud
+      #   uses: google-github-actions/auth@v2
+      #   with:
+      #     credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ inputs.project_id }}
+
+      - name: Enable required APIs
+        run: |
+          gcloud services enable run.googleapis.com artifactregistry.googleapis.com \
+            --project "${{ inputs.project_id }}"
+
+      - name: Ensure Artifact Registry repo exists
+        run: |
+          gcloud artifacts repositories describe "$ARTIFACT_REPO" \
+            --project "${{ inputs.project_id }}" --location "$ARTIFACT_REGION" \
+            || gcloud artifacts repositories create "$ARTIFACT_REPO" \
+                 --project "${{ inputs.project_id }}" --location "$ARTIFACT_REGION" \
+                 --repository-format=docker
+
+      - name: Build & push responder image
+        run: |
+          IMAGE="$ARTIFACT_REGION-docker.pkg.dev/${{ inputs.project_id }}/$ARTIFACT_REPO/$IMAGE_NAME:${{ github.sha }}"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+          gcloud builds submit responder \
+            --project "${{ inputs.project_id }}" \
+            --tag "$IMAGE"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init
+        run: terraform -chdir=infra init
+
+      - name: Terraform plan
+        run: |
+          terraform -chdir=infra plan \
+            -var "project_id=${{ inputs.project_id }}" \
+            -var "image=$IMAGE"
+
+      - name: Terraform apply
+        if: ${{ inputs.apply == 'true' }}
+        run: |
+          terraform -chdir=infra apply -auto-approve \
+            -var "project_id=${{ inputs.project_id }}" \
+            -var "image=$IMAGE"

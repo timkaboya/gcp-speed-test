@@ -2,7 +2,7 @@
   <div class="flex flex-wrap items-center justify-between gap-3">
     <span class="text-sm text-text-muted">
       <span class="font-semibold text-text-strong">{{ selectedRegionCount() }}</span> /
-      {{ totalRegionCount }} regions selected
+      {{ totalRegionCount() }} regions selected
     </span>
     <button
       type="button"
@@ -15,7 +15,7 @@
   </div>
 
   <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-    @for (group of regionGroups; track trackByGroup($index, group)) {
+    @for (group of regionGroups(); track trackByGroup($index, group)) {
       @let groupActive = isGroupChecked(group) || isGroupIndeterminate(group);
       <article
         class="card card-interactive flex flex-col gap-3"

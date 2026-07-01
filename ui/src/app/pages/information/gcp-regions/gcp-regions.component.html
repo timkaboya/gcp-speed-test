@@ -1,0 +1,40 @@
+<article class="page-shell section-stack mx-auto max-w-5xl">
+  <header class="page-header">
+    <h1 class="page-title">Google Cloud regions</h1>
+    <p class="page-lead">
+      Google Cloud operates regions across the globe. The GCP Speed Test measures latency to
+      <span class="font-semibold text-text-strong">{{ totalRegionCount() }}</span> Cloud Run region
+      endpoints. Regions below are grouped by geography. Run the
+      <a routerLink="/Gcp/Latency" class="link-primary font-semibold">latency test</a> to find the
+      closest one to you.
+    </p>
+  </header>
+
+  <section class="section-block" aria-labelledby="regions-heading">
+    <h2 id="regions-heading" class="sr-only">Google Cloud regions by geography</h2>
+    @if (regionGroups().length === 0) {
+      <p class="text-sm text-text-muted">Loading regions…</p>
+    } @else {
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        @for (group of regionGroups(); track group.regionGroup) {
+          <article class="card flex flex-col gap-3">
+            <header class="flex items-center justify-between gap-3">
+              <h3 class="text-base font-bold text-text-strong">{{ group.regionGroup }}</h3>
+              <span class="text-xs font-semibold text-text-muted">
+                {{ group.regions.length }} regions
+              </span>
+            </header>
+            <ul class="space-y-2 text-sm">
+              @for (region of group.regions; track region.regionId) {
+                <li class="flex items-center justify-between gap-3">
+                  <span class="font-medium text-text-strong">{{ region.displayName }}</span>
+                  <span class="font-mono text-xs text-text-muted">{{ region.regionId }}</span>
+                </li>
+              }
+            </ul>
+          </article>
+        }
+      </div>
+    }
+  </section>
+</article>

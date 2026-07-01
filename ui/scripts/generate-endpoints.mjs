@@ -3,7 +3,7 @@
 // browser; we bake it in at build time and ping the region URLs with `no-cors`.
 //
 // Usage: node scripts/generate-endpoints.mjs
-import { writeFile, mkdir } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 

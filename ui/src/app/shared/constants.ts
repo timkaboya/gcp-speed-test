@@ -2,4 +2,4 @@
  * Application constants
  */
 
-export const API_ENDPOINT = 'https://www.azurespeed.com'
+export const APP_NAME = 'GCP Speed Test'

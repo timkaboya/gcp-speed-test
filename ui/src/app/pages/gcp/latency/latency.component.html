@@ -1,0 +1,453 @@
+<article class="page-shell section-stack mx-auto max-w-5xl">
+  <header class="page-header">
+    <h1 class="page-title">Google Cloud latency test</h1>
+    <p class="page-lead">
+      Measure network latency from your location to Google Cloud regions worldwide and find the best
+      region for your workloads. Pings are sent straight from your browser to Cloud Run region
+      endpoints, so results reflect real round-trip time from where you are right now.
+    </p>
+  </header>
+
+  <section class="section-block" aria-labelledby="latency-test-heading">
+    <h2 id="latency-test-heading" class="sr-only">Latency test</h2>
+    <div class="mb-4 rounded-xl bg-gradient-to-r from-primary/5 via-transparent to-primary/5 p-4">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex flex-wrap items-center gap-x-6 gap-y-3">
+          <span class="text-xs font-bold tracking-widest text-primary uppercase">Test Steps</span>
+          <div class="flex flex-wrap items-center gap-4 text-sm">
+            <span class="flex items-center gap-2.5">
+              <span class="step-number" aria-hidden="true">1</span>
+              <span class="text-text-body">Select regions</span>
+            </span>
+            <span class="hidden text-border-contrast sm:inline" aria-hidden="true">|</span>
+            <span class="flex items-center gap-2.5">
+              <span class="step-number" aria-hidden="true">2</span>
+              <span class="text-text-body">Wait ~15 seconds</span>
+            </span>
+            <span class="hidden text-border-contrast sm:inline" aria-hidden="true">|</span>
+            <span class="flex items-center gap-2.5">
+              <span class="step-number" aria-hidden="true">3</span>
+              <span class="text-text-body">Scroll down to review results</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <app-region-group></app-region-group>
+  </section>
+
+  <section class="section-block" aria-labelledby="recommendations-heading">
+    <div class="flex items-center justify-between gap-4">
+      <h2 id="recommendations-heading" class="section-title">Recommended Google Cloud regions</h2>
+      <app-copy-button
+        [text]="shareUrl()"
+        icon="share-2"
+        label="Share"
+        ariaLabel="Share test results"
+        [resetOn]="shareUrl()"
+      />
+    </div>
+    @let best = bestRegion();
+    @if (!best) {
+      <div class="card mt-4 min-h-[200px]">
+        <div class="flex flex-col items-center justify-center gap-3 text-center">
+          <app-lucide-icon name="globe" class="h-10 w-10 text-primary/70" aria-hidden="true" />
+          <div class="space-y-1">
+            <div class="text-lg font-bold text-text-strong">
+              Which Google Cloud region is best for you?
+            </div>
+            <p class="text-sm text-text-muted">Select 2+ regions above to compare and find out</p>
+          </div>
+        </div>
+        <div class="mt-6 border-t border-border-soft pt-4">
+          <app-connection-details
+            [isVisible]="cloudflareMetaStore.isVisible()"
+            [isLoading]="cloudflareMetaStore.isLoading()"
+            [error]="cloudflareMetaStore.error()"
+            [networkLabel]="cloudflareMetaStore.viewerNetworkLabel()"
+            [locationLabel]="cloudflareMetaStore.viewerLocationLabel()"
+            [ipLabel]="cloudflareMetaStore.viewerIpLabel()"
+            (toggleVisibility)="cloudflareMetaStore.toggleVisibility()"
+          />
+        </div>
+      </div>
+    }
+    @if (best) {
+      <div class="mt-4 space-y-3">
+        <div
+          class="divide-y divide-border-soft overflow-hidden rounded-xl border border-border-soft bg-surface-raised"
+        >
+          @let allRegions = [best].concat(runnerUpRegions());
+          @for (region of allRegions; track region.regionId; let i = $index) {
+            @let tone = getLatencyBadgeState(region.medianLatency);
+            <a
+              class="flex items-center gap-4 px-4 py-3 transition-all"
+              [class]="
+                i === 0
+                  ? 'relative border-l-4 border-l-success bg-gradient-to-r from-success/10 via-success/5 to-transparent hover:from-success/15'
+                  : 'hover:bg-surface-muted'
+              "
+              [routerLink]="buildRegionRouterLink()"
+            >
+              <span
+                class="flex shrink-0 items-center justify-center rounded-full font-bold"
+                [class]="
+                  i === 0
+                    ? 'h-8 w-8 bg-success text-sm text-success-foreground shadow-md shadow-success/30'
+                    : 'h-7 w-7 bg-primary/15 text-xs text-text-strong'
+                "
+                >{{ i + 1 }}</span
+              >
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span
+                    [class]="
+                      i === 0
+                        ? 'text-base font-bold text-text-strong'
+                        : 'font-semibold text-text-strong'
+                    "
+                    >{{ region.displayName }}</span
+                  >
+                  @if (i === 0) {
+                    <span class="best-badge">Best</span>
+                  }
+                </div>
+                <div [class]="i === 0 ? 'text-sm text-text-body' : 'text-sm text-text-muted'">
+                  {{ region.regionId }}
+                </div>
+              </div>
+              <span
+                class="badge-latency"
+                [class.badge-latency-success]="tone === 'fast'"
+                [class.badge-latency-warning]="tone === 'moderate'"
+                [class.badge-latency-danger]="tone === 'slow'"
+                [class.badge-latency-neutral]="tone === 'unknown'"
+              >
+                {{ region.medianLatency }} ms
+              </span>
+              <app-lucide-icon
+                name="chevron-right"
+                [class]="i === 0 ? 'h-5 w-5 text-success' : 'h-4 w-4 text-text-muted'"
+                aria-hidden="true"
+              />
+            </a>
+          }
+        </div>
+        <app-connection-details
+          [isVisible]="cloudflareMetaStore.isVisible()"
+          [isLoading]="cloudflareMetaStore.isLoading()"
+          [error]="cloudflareMetaStore.error()"
+          [networkLabel]="cloudflareMetaStore.viewerNetworkLabel()"
+          [locationLabel]="cloudflareMetaStore.viewerLocationLabel()"
+          [ipLabel]="cloudflareMetaStore.viewerIpLabel()"
+          (toggleVisibility)="cloudflareMetaStore.toggleVisibility()"
+        />
+      </div>
+    }
+  </section>
+
+  @let rows = tableData();
+  @let hasRows = rows.length > 0;
+  <!-- Always render results section when regions selected to prevent CLS -->
+  <section
+    class="section-block"
+    aria-labelledby="results-heading"
+    [class.hidden]="!hasSelectedRegions()"
+  >
+    <div class="flex items-center justify-between gap-4">
+      <h2 id="results-heading" class="section-title">Google Cloud latency test results</h2>
+      <app-export-csv-button
+        filename="gcp-latency-results"
+        [headers]="csvHeaders"
+        [rows]="csvRows()"
+      />
+    </div>
+    @let maxLatency = hasRows ? rows[rows.length - 1].medianLatency : 300;
+    <div class="flex min-h-[420px] flex-col gap-5" aria-live="polite">
+      <div class="flex w-full flex-col gap-4">
+        @if (hasRows) {
+          <div class="table-shell hidden sm:block">
+            <table class="table-base">
+              <thead class="table-head">
+                <tr>
+                  <th class="px-4 py-3">Geography</th>
+                  <th class="px-4 py-3">Region</th>
+                  <th class="px-4 py-3 text-right">Median latency</th>
+                  <th class="px-4 py-3 text-right">Latest (ms)</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-border-soft">
+                @for (item of rows; track trackByRegionData($index, item); let idx = $index) {
+                  @let rowTone = getLatencyBadgeState(item.medianLatency);
+                  @let barWidth = maxLatency > 0 ? (item.medianLatency / maxLatency) * 100 : 0;
+                  <tr
+                    class="table-row-hover group animate-fade-slide-in"
+                    [class.best-row]="idx === 0"
+                  >
+                    <td class="px-4 py-3">
+                      <div class="flex items-center gap-2">
+                        <span class="block text-sm font-semibold text-text-strong">
+                          {{ item.geography }}
+                        </span>
+                        @if (idx === 0) {
+                          <span class="best-badge" aria-label="Best latency result">Best</span>
+                        }
+                      </div>
+                    </td>
+                    <td class="px-4 py-3">
+                      <div class="space-y-1 text-left">
+                        <a
+                          class="link-primary font-semibold"
+                          [routerLink]="buildRegionRouterLink()"
+                        >
+                          {{ item.displayName }}
+                          <span aria-hidden="true" class="text-text-muted">></span>
+                        </a>
+                        <div class="text-xs font-semibold tracking-wide text-text-subtle uppercase">
+                          {{ item.regionId }}
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-4 py-3">
+                      @if (item.medianLatency && item.medianLatency > 0) {
+                        <div class="flex items-center justify-end gap-3">
+                          <div
+                            class="relative h-2 w-24 overflow-hidden rounded-full border border-border-strong bg-surface-muted"
+                          >
+                            <div
+                              class="animate-bar-grow absolute inset-y-0 left-0 rounded-full transition-all duration-500"
+                              [class.bar-color-fast]="rowTone === 'fast'"
+                              [class.bar-color-moderate]="rowTone === 'moderate'"
+                              [class.bar-color-slow]="rowTone === 'slow'"
+                              [class.bar-color-default]="rowTone === 'unknown'"
+                              [style.width.%]="barWidth"
+                            ></div>
+                          </div>
+                          <span
+                            class="min-w-[3rem] font-mono text-sm font-bold tabular-nums"
+                            [class.text-success]="rowTone === 'fast'"
+                            [class.text-warning]="rowTone === 'moderate'"
+                            [class.text-danger]="rowTone === 'slow'"
+                            [class.text-text-muted]="rowTone === 'unknown'"
+                          >
+                            {{ item.medianLatency }} ms
+                          </span>
+                        </div>
+                      } @else {
+                        <span class="block text-right text-sm text-text-muted">Measuring...</span>
+                      }
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                      <span class="font-mono text-sm font-semibold text-text-strong tabular-nums">
+                        {{ item.currentLatency || '-' }}
+                      </span>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <div class="space-y-2 sm:hidden">
+            @for (item of rows; track trackByRegionData($index, item); let idx = $index) {
+              @let cardTone = getLatencyBadgeState(item.medianLatency);
+              @let cardBarWidth = maxLatency > 0 ? (item.medianLatency / maxLatency) * 100 : 0;
+              <article
+                class="animate-fade-slide-in rounded-lg border border-border-soft bg-surface-raised p-3"
+                [class.border-success/40]="idx === 0"
+                [class.bg-success/5]="idx === 0"
+              >
+                <a class="flex items-center gap-3" [routerLink]="buildRegionRouterLink()">
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2">
+                      @if (idx === 0) {
+                        <span class="best-badge">Best</span>
+                      }
+                      <span class="font-semibold text-text-strong">{{ item.displayName }}</span>
+                    </div>
+                    <div class="mt-0.5 text-xs text-text-muted">
+                      {{ item.geography }} · {{ item.regionId }}
+                    </div>
+                  </div>
+                  <div class="flex shrink-0 flex-col items-end gap-1">
+                    <span
+                      class="font-mono text-sm font-bold tabular-nums"
+                      [class.text-success]="cardTone === 'fast'"
+                      [class.text-warning]="cardTone === 'moderate'"
+                      [class.text-danger]="cardTone === 'slow'"
+                      [class.text-text-muted]="cardTone === 'unknown'"
+                    >
+                      {{ item.medianLatency || '-' }} ms
+                    </span>
+                    <div
+                      class="relative h-1.5 w-16 overflow-hidden rounded-full border border-border-strong bg-surface-muted"
+                    >
+                      <div
+                        class="animate-bar-grow absolute inset-y-0 left-0 rounded-full"
+                        [class.bar-color-fast]="cardTone === 'fast'"
+                        [class.bar-color-moderate]="cardTone === 'moderate'"
+                        [class.bar-color-slow]="cardTone === 'slow'"
+                        [class.bar-color-default]="cardTone === 'unknown'"
+                        [style.width.%]="cardBarWidth"
+                      ></div>
+                    </div>
+                  </div>
+                  <app-lucide-icon
+                    name="chevron-right"
+                    class="h-4 w-4 shrink-0 text-text-muted"
+                    aria-hidden="true"
+                  />
+                </a>
+              </article>
+            }
+          </div>
+        } @else if (shouldShowLatencySkeleton()) {
+          <div
+            class="min-h-[420px] animate-pulse rounded-2xl bg-gradient-to-r from-neutral-muted/70 via-surface-raised to-neutral-muted/70"
+            aria-hidden="true"
+          ></div>
+        } @else {
+          <div
+            class="flex min-h-[420px] flex-col items-center justify-center gap-4 rounded-2xl border border-border-soft bg-surface-muted/50 text-center"
+          >
+            <app-lucide-icon
+              name="signal-high"
+              class="h-12 w-12 text-text-muted/50"
+              aria-hidden="true"
+            />
+            <div class="space-y-1">
+              <p class="text-lg font-semibold text-text-strong">No latency data yet</p>
+              <p class="text-sm text-text-muted">
+                Select regions above and wait for results to appear.
+              </p>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="section-block" aria-labelledby="note-heading">
+    <h2 id="note-heading" class="sr-only">Important note</h2>
+    <div class="flex gap-4 rounded-xl border border-info/30 bg-info/5 p-4" role="note">
+      <app-lucide-icon name="info" class="mt-0.5 h-5 w-5 shrink-0 text-info" aria-hidden="true" />
+      <div class="space-y-1">
+        <p class="text-sm font-semibold text-text-strong">Important note</p>
+        <p class="text-sm leading-relaxed text-text-body">
+          This site gives a quick, indicative view of latency to Google Cloud regions from your
+          location. Use it for initial guidance, not for SLAs or final performance decisions.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-block" aria-labelledby="faq-heading">
+    <h2 id="faq-heading" class="section-title">Frequently asked questions</h2>
+    <div class="faq-list">
+      <details class="faq-item group">
+        <summary class="faq-summary">
+          <span class="faq-question">What is latency and what constitutes good latency?</span>
+          <app-lucide-icon name="chevron-down" class="faq-icon" aria-hidden="true" />
+        </summary>
+        <div class="faq-body">
+          <p>
+            <strong class="text-text-strong">Latency</strong>, often referred to as ping, is the
+            duration for data to travel from the source to the destination and back. The results of
+            this test represent the median round trip time (RTT) latency to Google Cloud region
+            endpoints, with lower RTT indicating superior performance.
+          </p>
+          <p>
+            <strong class="text-text-strong">What constitutes good latency?</strong>
+            Good latency varies by application type:
+          </p>
+          <ul>
+            <li>
+              <strong class="text-text-strong">Real-time applications</strong>
+              (e.g., gaming, video conferencing): latency below 50 ms is ideal.
+            </li>
+            <li>
+              <strong class="text-text-strong">Interactive applications</strong>
+              (e.g., web browsing, online trading): latency between 50 ms and 100 ms is usually
+              acceptable.
+            </li>
+            <li>
+              <strong class="text-text-strong">Non-interactive applications</strong>
+              (e.g., file transfers, backups): latency above 100 ms may be acceptable.
+            </li>
+          </ul>
+          <p>
+            These guidelines may vary depending on specific application needs and user expectations.
+          </p>
+        </div>
+      </details>
+      <details class="faq-item">
+        <summary class="faq-summary">
+          <span class="faq-question">How does the Google Cloud Latency Test work?</span>
+          <app-lucide-icon name="chevron-down" class="faq-icon" aria-hidden="true" />
+        </summary>
+        <div class="faq-body">
+          <p>
+            Your browser sends lightweight HTTPS requests to a Cloud Run endpoint in each selected
+            region. The median latency is calculated by measuring the time between the request and
+            the response.
+          </p>
+        </div>
+      </details>
+      <details class="faq-item">
+        <summary class="faq-summary">
+          <span class="faq-question"
+            >Does the latency test reflect actual application performance?</span
+          >
+          <app-lucide-icon name="chevron-down" class="faq-icon" aria-hidden="true" />
+        </summary>
+        <div class="faq-body">
+          <p>
+            Partially. This test is a network-focused indicator, not a full application benchmark.
+          </p>
+          <ul>
+            <li>
+              <strong class="text-success">✓</strong> Good for comparing relative latency between
+              Google Cloud regions
+            </li>
+            <li><strong class="text-success">✓</strong> Useful for region-selection discussions</li>
+            <li>
+              <strong class="text-danger">✗</strong> Not a substitute for application-level load or
+              performance testing
+            </li>
+          </ul>
+          <p>Use this test as a signal for initial guidance, not as the sole decision-maker.</p>
+        </div>
+      </details>
+      <details class="faq-item">
+        <summary class="faq-summary">
+          <span class="faq-question">Is my speed test result private?</span>
+          <app-lucide-icon name="chevron-down" class="faq-icon" aria-hidden="true" />
+        </summary>
+        <div class="faq-body">
+          <p>
+            <strong class="text-text-strong">Yes.</strong> GCP Speed Test does not require
+            authentication and does not collect personal or corporate identity information. Test
+            results are generated entirely in your browser and are only visible to you. Other users
+            cannot view, discover, or search for your results unless you explicitly share them
+            (e.g., via screenshot). Results are not published, stored, or retained on our servers.
+          </p>
+        </div>
+      </details>
+      <details class="faq-item">
+        <summary class="faq-summary">
+          <span class="faq-question"
+            >Why might some Google Cloud regions measure high latency?</span
+          >
+          <app-lucide-icon name="chevron-down" class="faq-icon" aria-hidden="true" />
+        </summary>
+        <div class="faq-body">
+          <p>
+            Distant regions legitimately measure many hundreds of milliseconds — the test never
+            hides a region for being "too slow", it shows the real number. The first request to a
+            cold region also pays a TLS handshake and cold-start cost, so we run a throwaway warm-up
+            ping before recording timed samples.
+          </p>
+        </div>
+      </details>
+    </div>
+  </section>
+</article>

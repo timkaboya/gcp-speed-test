@@ -54,52 +54,12 @@ export class App {
 
   readonly navGroups = signal<NavGroup[]>([
     {
-      heading: 'Featured',
-      items: [
-        {
-          label: 'ChatGPT Coding Assistant',
-          icon: 'braces',
-          routerLink: '/ChatGPT/CodeAssistant'
-        },
-        {
-          label: 'ChatGPT Writing Assistant',
-          icon: 'pencil',
-          routerLink: '/ChatGPT/WritingAssistant'
-        }
-      ]
-    },
-    {
       heading: 'Testing',
       items: [
         {
-          label: 'Azure Latency Test',
+          label: 'Google Cloud Latency Test',
           icon: 'zap',
-          routerLink: '/Azure/Latency'
-        },
-        {
-          label: 'Region to Region Latency',
-          icon: 'arrow-left-right',
-          routerLink: '/Azure/RegionToRegionLatency'
-        },
-        {
-          label: 'PsPing Network Latency Test',
-          icon: 'signal-high',
-          routerLink: '/Azure/PsPing'
-        },
-        {
-          label: 'Download Speed Test',
-          icon: 'download',
-          routerLink: '/Azure/Download'
-        },
-        {
-          label: 'Upload Speed Test',
-          icon: 'upload',
-          routerLink: '/Azure/Upload'
-        },
-        {
-          label: 'Large File Upload Speed Test',
-          icon: 'upload-cloud',
-          routerLink: '/Azure/UploadLargeFile'
+          routerLink: '/Gcp/Latency'
         }
       ]
     },
@@ -107,64 +67,9 @@ export class App {
       heading: 'Resources',
       items: [
         {
-          label: 'Azure Regions',
+          label: 'Google Cloud Regions',
           icon: 'globe-2',
-          routerLink: '/Information/AzureRegions'
-        },
-        {
-          label: 'Azure Availability Zones',
-          icon: 'server',
-          routerLink: '/Information/AzureAvailabilityZones'
-        },
-        {
-          label: 'Azure Geographies',
-          icon: 'globe',
-          routerLink: '/Information/AzureGeographies'
-        },
-        {
-          label: 'Azure Sovereign Clouds',
-          icon: 'cloud',
-          routerLink: '/Information/AzureSovereignClouds'
-        },
-        {
-          label: 'Azure Environments',
-          icon: 'cog',
-          routerLink: '/Information/AzureEnvironments'
-        }
-      ]
-    },
-    {
-      heading: 'IP Tools',
-      items: [
-        {
-          label: 'Azure IP Lookup',
-          icon: 'search',
-          routerLink: '/Azure/IPLookup'
-        },
-        {
-          label: 'Azure IP Ranges',
-          icon: 'map',
-          routerLink: '/Information/AzureIpRanges/AzureCloud'
-        },
-        {
-          label: 'Azure IP Ranges By Region',
-          icon: 'map-pin',
-          routerLink: '/Information/AzureIpRangesByRegion'
-        },
-        {
-          label: 'Azure IP Ranges By Service',
-          icon: 'bar-chart-3',
-          routerLink: '/Information/AzureIpRangesByService'
-        }
-      ]
-    },
-    {
-      heading: 'Info',
-      items: [
-        {
-          label: 'About',
-          icon: 'info',
-          routerLink: '/Azure/About'
+          routerLink: '/Information/GcpRegions'
         }
       ]
     }
