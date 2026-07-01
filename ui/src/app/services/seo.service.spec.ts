@@ -14,6 +14,9 @@ describe('SeoService', () => {
     service = TestBed.inject(SeoService)
     document = TestBed.inject(DOCUMENT)
     document.head.querySelectorAll('link[rel="canonical"]').forEach((link) => link.remove())
+    document
+      .head.querySelectorAll('script[data-seo="page-jsonld"]')
+      .forEach((script) => script.remove())
   })
 
   it('sets the page title', () => {
@@ -89,5 +92,36 @@ describe('SeoService', () => {
     })
 
     expect(meta.getTag('property="og:image"')?.content).toBe('https://img/custom.png')
+  })
+
+  it('sets a keywords meta tag when keywords are provided', () => {
+    const meta = TestBed.inject(Meta)
+    service.setKeywords(['gcp latency', 'cloud run latency'])
+    expect(meta.getTag('name="keywords"')?.content).toBe('gcp latency, cloud run latency')
+  })
+
+  it('removes the keywords meta tag when none are provided', () => {
+    const meta = TestBed.inject(Meta)
+    service.setKeywords(['gcp latency'])
+    service.setKeywords()
+    expect(meta.getTag('name="keywords"')).toBeNull()
+  })
+
+  it('injects a single JSON-LD script and replaces it on the next call', () => {
+    service.setStructuredData([{ '@type': 'FAQPage' }])
+    let scripts = document.head.querySelectorAll('script[data-seo="page-jsonld"]')
+    expect(scripts).toHaveLength(1)
+    expect(JSON.parse(scripts[0].textContent ?? '{}')['@graph'][0]['@type']).toBe('FAQPage')
+
+    service.setStructuredData([{ '@type': 'BreadcrumbList' }])
+    scripts = document.head.querySelectorAll('script[data-seo="page-jsonld"]')
+    expect(scripts).toHaveLength(1)
+    expect(JSON.parse(scripts[0].textContent ?? '{}')['@graph'][0]['@type']).toBe('BreadcrumbList')
+  })
+
+  it('removes the JSON-LD script when structured data is empty', () => {
+    service.setStructuredData([{ '@type': 'FAQPage' }])
+    service.setStructuredData([])
+    expect(document.head.querySelectorAll('script[data-seo="page-jsonld"]')).toHaveLength(0)
   })
 })
