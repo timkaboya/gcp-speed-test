@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.angular/
+
+# Terraform
+infra/.terraform/
+infra/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+infra/terraform.tfvars
+
+# Env / secrets
+.env
+*.key
+*.pem
+
+# OS / editor
+.DS_Store
+Thumbs.db
