@@ -11,10 +11,11 @@ export class PrivacyComponent implements OnInit {
   private readonly seoService = inject(SeoService)
 
   ngOnInit(): void {
-    this.seoService.setMetaTitle('Privacy Policy - GCP Speed Test')
-    this.seoService.setMetaDescription(
-      'Understand how GCP Speed Test handles analytics data and protects your information during latency measurements.'
-    )
-    this.seoService.setCanonicalUrl('https://www.gcpspeed.com/Privacy')
+    this.seoService.applyPageSeo({
+      title: 'Privacy Policy - GCP Speed Test',
+      description:
+        'Understand how GCP Speed Test handles analytics data and protects your information during latency measurements.',
+      path: '/Privacy'
+    })
   }
 }
