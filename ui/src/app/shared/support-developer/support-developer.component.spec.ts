@@ -85,6 +85,29 @@ describe('SupportDeveloperComponent', () => {
     expect(component.status()).toBe('success')
   })
 
+  it('treats a blank email as valid and sends no email override', async () => {
+    expect(component.isEmailValid()).toBe(true)
+    await component.donate()
+    const options = donate.mock.calls[0][0] as DonateOptions
+    expect(options.email).toBeUndefined()
+  })
+
+  it('passes a provided email through to Paystack', async () => {
+    component.email.set('donor@example.com')
+    expect(component.isEmailValid()).toBe(true)
+    await component.donate()
+    const options = donate.mock.calls[0][0] as DonateOptions
+    expect(options.email).toBe('donor@example.com')
+  })
+
+  it('rejects an invalid email and blocks the donation', async () => {
+    component.email.set('not-an-email')
+    expect(component.isEmailValid()).toBe(false)
+    expect(component.isValid()).toBe(false)
+    await component.donate()
+    expect(donate).not.toHaveBeenCalled()
+  })
+
   it('returns to idle when the Paystack popup is cancelled', async () => {
     await component.donate()
     const options = donate.mock.calls[0][0] as DonateOptions
