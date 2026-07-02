@@ -28,6 +28,8 @@ interface PaystackWindow extends Window {
 export interface DonateOptions {
   /** Amount in the smallest currency subunit (cents for USD). */
   amountCents: number
+  /** Optional supporter email for the receipt; falls back to SUPPORT_EMAIL. */
+  email?: string
   onSuccess?: (transaction: unknown) => void
   onCancel?: () => void
 }
@@ -89,7 +91,7 @@ export class PaystackService {
     const popup = new PaystackPop()
     popup.newTransaction({
       key: PAYSTACK_PUBLIC_KEY,
-      email: SUPPORT_EMAIL,
+      email: options.email?.trim() || SUPPORT_EMAIL,
       amount: options.amountCents,
       currency: SUPPORT_CURRENCY,
       onSuccess: options.onSuccess,

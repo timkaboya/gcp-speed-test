@@ -44,6 +44,36 @@ describe('PaystackService', () => {
         })
       )
     })
+
+    it('uses a supplied email over the placeholder', async () => {
+      const newTransaction = vi.fn()
+      class MockPop {
+        newTransaction = newTransaction
+      }
+      ;(window as unknown as Record<string, unknown>)['PaystackPop'] = MockPop
+
+      const service = TestBed.inject(PaystackService)
+      await service.donate({ amountCents: 500, email: 'donor@example.com' })
+
+      expect(newTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({ email: 'donor@example.com' })
+      )
+    })
+
+    it('falls back to the placeholder when the email is blank', async () => {
+      const newTransaction = vi.fn()
+      class MockPop {
+        newTransaction = newTransaction
+      }
+      ;(window as unknown as Record<string, unknown>)['PaystackPop'] = MockPop
+
+      const service = TestBed.inject(PaystackService)
+      await service.donate({ amountCents: 500, email: '   ' })
+
+      expect(newTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({ email: SUPPORT_EMAIL })
+      )
+    })
   })
 
   describe('on the server', () => {

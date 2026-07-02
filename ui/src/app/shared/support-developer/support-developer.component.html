@@ -84,6 +84,26 @@
               />
             </span>
           </label>
+
+          <label class="block space-y-1">
+            <span class="text-sm text-text-muted">Email for receipt (optional)</span>
+            <input
+              type="email"
+              autocomplete="email"
+              placeholder="you@example.com"
+              class="w-full rounded-md border bg-surface-base px-3 py-2 text-sm text-text-strong outline-none focus:ring-2 focus:ring-primary"
+              [class.border-border-contrast]="isEmailValid()"
+              [class.border-danger]="!isEmailValid()"
+              [attr.aria-invalid]="!isEmailValid()"
+              [value]="email()"
+              (input)="email.set($any($event.target).value)"
+            />
+            @if (!isEmailValid()) {
+              <span class="text-xs text-danger" role="alert">
+                Please enter a valid email, or leave it blank.
+              </span>
+            }
+          </label>
         </fieldset>
 
         @if (status() === 'error') {

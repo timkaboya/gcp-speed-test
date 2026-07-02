@@ -36,11 +36,20 @@ export class SupportDeveloperComponent {
   /** Raw text of the custom amount field ('' means a preset tier is active). */
   readonly customValue = signal('')
 
+  /** Optional supporter email for the receipt. Empty falls back to the placeholder. */
+  readonly email = signal('')
+
   readonly isProcessing = computed(() => this.status() === 'processing')
+
+  /** A blank email is allowed (placeholder is used); a non-blank one must look valid. */
+  readonly isEmailValid = computed(() => {
+    const value = this.email().trim()
+    return value === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+  })
 
   readonly isValid = computed(() => {
     const value = this.amount()
-    return value !== null && value >= 1
+    return value !== null && value >= 1 && this.isEmailValid()
   })
 
   isTierActive(tier: number): boolean {
@@ -74,9 +83,11 @@ export class SupportDeveloperComponent {
 
   async donate(): Promise<void> {
     const value = this.amount()
-    if (value === null || value < 1 || this.isProcessing()) {
+    if (value === null || value < 1 || !this.isEmailValid() || this.isProcessing()) {
       return
     }
+
+    const email = this.email().trim()
 
     this.status.set('processing')
     this.errorMessage.set('')
@@ -84,6 +95,7 @@ export class SupportDeveloperComponent {
     try {
       await this.paystack.donate({
         amountCents: Math.round(value * 100),
+        email: email === '' ? undefined : email,
         onSuccess: () => this.zone.run(() => this.status.set('success')),
         onCancel: () => this.zone.run(() => this.status.set('idle'))
       })
