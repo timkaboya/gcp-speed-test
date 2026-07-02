@@ -18,4 +18,12 @@ describe('FooterComponent', () => {
     expect(fixture.componentInstance.startYear).toBe(2013)
     expect(fixture.nativeElement).toBeTruthy()
   })
+
+  it('renders the support-the-developer widget', () => {
+    const fixture = TestBed.createComponent(FooterComponent)
+    fixture.detectChanges()
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? ''
+    expect(text).toContain('Support the developer')
+    expect(text).toContain('Buy me a coffee')
+  })
 })
