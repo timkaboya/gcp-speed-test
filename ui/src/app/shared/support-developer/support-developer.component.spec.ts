@@ -37,6 +37,20 @@ describe('SupportDeveloperComponent', () => {
     expect(component.isValid()).toBe(true)
   })
 
+  it('renders the compact header variant without the section heading', () => {
+    fixture.componentRef.setInput('variant', 'compact')
+    fixture.detectChanges()
+    const host = fixture.nativeElement as HTMLElement
+    const trigger = host.querySelector('button[aria-label="Buy me a coffee"]')
+    expect(trigger).not.toBeNull()
+    expect(host.textContent).not.toContain('Support the developer')
+
+    trigger?.dispatchEvent(new MouseEvent('click'))
+    fixture.detectChanges()
+    expect(component.isOpen()).toBe(true)
+    expect(host.querySelector('[role="dialog"]')).not.toBeNull()
+  })
+
   it('opens the dialog and resets status to idle', () => {
     component.status.set('error')
     component.open()
