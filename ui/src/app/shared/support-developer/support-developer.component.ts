@@ -3,6 +3,7 @@ import {
   Component,
   computed,
   inject,
+  input,
   NgZone,
   signal
 } from '@angular/core'
@@ -22,6 +23,9 @@ type DonationStatus = 'idle' | 'processing' | 'success' | 'error'
 export class SupportDeveloperComponent {
   private readonly paystack = inject(PaystackService)
   private readonly zone = inject(NgZone)
+
+  /** 'full' renders a labelled block (footer); 'compact' renders a header trigger. */
+  readonly variant = input<'full' | 'compact'>('full')
 
   readonly tiers = SUPPORT_TIERS
   readonly currency = SUPPORT_CURRENCY

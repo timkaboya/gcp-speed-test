@@ -22,6 +22,7 @@ import {
 import { FooterComponent } from './shared/footer/footer.component'
 import { LucideIconComponent } from './shared/icons/lucide-icons.component'
 import { NavGroup, NavGroupsComponent } from './shared/nav-groups/nav-groups.component'
+import { SupportDeveloperComponent } from './shared/support-developer/support-developer.component'
 import { ThemeToggleComponent } from './shared/theme'
 
 @Component({
@@ -32,6 +33,7 @@ import { ThemeToggleComponent } from './shared/theme'
     FooterComponent,
     NavGroupsComponent,
     LucideIconComponent,
+    SupportDeveloperComponent,
     ThemeToggleComponent
   ],
   host: {
