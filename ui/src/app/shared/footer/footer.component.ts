@@ -11,5 +11,5 @@ import { LucideIconComponent } from '../icons/lucide-icons.component'
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class FooterComponent {
-  readonly startYear = 2013
+  readonly startYear = 2025
 }
