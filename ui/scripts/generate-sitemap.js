@@ -13,7 +13,7 @@ const prerenderManifestPath = resolve(
   'prerendered-routes.json'
 )
 
-const baseUrlFromEnv = process.env.SITEMAP_BASE_URL ?? 'https://www.azurespeed.com'
+const baseUrlFromEnv = process.env.SITEMAP_BASE_URL ?? 'https://www.gcpspeed.com'
 const normalizedBaseUrl = baseUrlFromEnv.replace(/\/+$/, '')
 
 if (!/^https?:\/\//.test(normalizedBaseUrl)) {

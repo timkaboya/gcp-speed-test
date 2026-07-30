@@ -61,7 +61,7 @@ export class App {
         {
           label: 'Google Cloud Latency Test',
           icon: 'zap',
-          routerLink: '/Gcp/Latency'
+          routerLink: '/'
         }
       ]
     },

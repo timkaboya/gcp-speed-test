@@ -253,7 +253,7 @@ export class LatencyComponent implements OnInit, OnDestroy {
       title: 'Google Cloud Latency Test | Measure Cloud Run Region Latency',
       description:
         'Test latency from your location to Google Cloud regions worldwide. Measure the round-trip time to Cloud Run regions and find the closest Google Cloud datacenters.',
-      path: '/Gcp/Latency',
+      path: '/',
       keywords: [
         'Google Cloud latency test',
         'GCP latency test',
@@ -349,12 +349,6 @@ export class LatencyComponent implements OnInit, OnDestroy {
             position: 1,
             name: 'GCP Speed Test',
             item: `${SITE_URL}/`
-          },
-          {
-            '@type': 'ListItem',
-            position: 2,
-            name: 'Google Cloud Latency Test',
-            item: `${SITE_URL}/Gcp/Latency`
           }
         ]
       }
