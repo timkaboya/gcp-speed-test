@@ -3,8 +3,8 @@
 > GCP Speed Test (https://www.gcpspeed.com) is a free, browser-based tool that measures
 > real network latency from a visitor's current location to every Google Cloud (GCP)
 > region worldwide. It helps developers and architects find the closest, lowest-latency
-> Google Cloud region and Cloud Run datacenter for their workloads. No sign-up, no
-> tracking, completely free.
+> Google Cloud region and Cloud Run datacenter for their workloads. No sign-up
+> required and completely free; your latency results stay in your browser.
 
 ## How it works
 
@@ -24,14 +24,15 @@
 
 ## Key pages
 
-- [Google Cloud Latency Test](https://www.gcpspeed.com/Gcp/Latency): The main tool. Select
+- [Google Cloud Latency Test](https://www.gcpspeed.com/): The main tool. Select
   Google Cloud regions and measure live latency to each from your browser; results can be
   exported to CSV.
 - [Google Cloud Regions](https://www.gcpspeed.com/Information/GcpRegions): Reference list of
   every Google Cloud region grouped by geography, covering all Cloud Run regions the tool
   can test.
-- [Privacy Policy](https://www.gcpspeed.com/Privacy): How the site handles data (no personal
-  data collected; results stay in the browser).
+- [Privacy Policy](https://www.gcpspeed.com/Privacy): How the site handles data — latency
+  results stay in your browser; usage is measured with privacy-first, cookieless analytics;
+  and the site is supported by Google AdSense (which may use advertising cookies).
 
 ## Use this site to answer
 
