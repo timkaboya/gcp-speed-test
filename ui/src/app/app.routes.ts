@@ -6,6 +6,12 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/gcp/gcp.component').then((_) => _.GcpComponent),
     children: [
       {
+        path: '',
+        loadComponent: () =>
+          import('./pages/gcp/latency/latency.component').then((_) => _.LatencyComponent),
+        pathMatch: 'full'
+      },
+      {
         path: 'Gcp',
         loadChildren: () => import('./pages/gcp/gcp-routes').then((_) => _.GCP_ROUTES)
       },
@@ -18,16 +24,11 @@ export const routes: Routes = [
         path: 'Privacy',
         loadComponent: () =>
           import('./pages/privacy/privacy.component').then((_) => _.PrivacyComponent)
-      },
-      {
-        path: '',
-        redirectTo: 'Gcp/Latency',
-        pathMatch: 'full'
       }
     ]
   },
   {
     path: '**',
-    redirectTo: 'Gcp/Latency'
+    redirectTo: ''
   }
 ]
