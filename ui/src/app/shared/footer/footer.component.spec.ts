@@ -15,7 +15,7 @@ describe('FooterComponent', () => {
   it('mounts and exposes the start year', () => {
     const fixture = TestBed.createComponent(FooterComponent)
     fixture.detectChanges()
-    expect(fixture.componentInstance.startYear).toBe(2013)
+    expect(fixture.componentInstance.startYear).toBe(2025)
     expect(fixture.nativeElement).toBeTruthy()
   })
 })
