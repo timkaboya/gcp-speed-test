@@ -12,7 +12,6 @@ import {
   untracked
 } from '@angular/core'
 import { ActivatedRoute, Router, RouterLink } from '@angular/router'
-import { Subscription, timer } from 'rxjs'
 
 import { RegionModel } from '../../../models'
 import { RegionService, SeoService } from '../../../services'
@@ -24,29 +23,11 @@ import { buildRegionDetailRouterLink } from '../../../shared/utils'
 import { RegionGroupComponent } from '../../shared'
 import { CloudflareMetaStore } from './cloudflare-meta.store'
 import { ConnectionDetailsComponent } from './connection-details.component'
-
-// Single source of truth - minimal state
-interface RegionPingData {
-  regionId: string
-  geography: string
-  displayName: string
-  url: string
-
-  // Only store raw ping history - everything else is computed
-  pingHistory: number[]
-  lastPingTime: number
-}
-
-interface RegionWithLatencyMetrics extends RegionPingData {
-  medianLatency: number
-  currentLatency: number
-}
-
-interface LatencyState {
-  regions: Map<string, RegionPingData>
-  pingAttemptCount: number
-  isTestRunning: boolean
-}
+import {
+  LATENCY_TEST_CONFIG,
+  LatencyTestStore,
+  RegionWithLatencyMetrics
+} from './latency-test.store'
 
 @Component({
   selector: 'app-gcp-latency',
@@ -64,6 +45,7 @@ interface LatencyState {
 })
 export class LatencyComponent implements OnInit, OnDestroy {
   private readonly regionService = inject(RegionService)
+  private readonly latencyTestStore = inject(LatencyTestStore)
   private readonly seoService = inject(SeoService)
   private readonly platformId = inject(PLATFORM_ID)
   private readonly isBrowser = isPlatformBrowser(this.platformId)
@@ -77,75 +59,21 @@ export class LatencyComponent implements OnInit, OnDestroy {
   protected readonly cloudflareMetaStore = inject(CloudflareMetaStore)
   private hasComponentDestroyed = false
 
-  // Configuration constants
-  private static readonly CONFIG = {
-    MAX_PING_ATTEMPTS: 180,
-    PING_INTERVAL_MS: 2000,
-    MAX_PING_HISTORY: 20,
-    // Cold Cloud Run + TLS handshake on a distant region can take seconds on the
-    // first hit, so we allow a generous timeout instead of an artificial cap.
-    PING_TIMEOUT_MS: 5000,
-    CONCURRENT_PINGS: 4,
-    BATCH_UPDATE_DELAY_MS: 50,
-    LATENCY_FAST: 100,
-    LATENCY_ACCEPTABLE: 200
-  } as const
-
-  // Single state signal - minimal source of truth
-  private state = signal<LatencyState>({
-    regions: new Map(),
-    pingAttemptCount: 0,
-    isTestRunning: false
-  })
-
-  // Batch update mechanism
-  private pendingPingUpdates = new Map<string, number>()
-  private batchUpdateTimer?: ReturnType<typeof setTimeout>
-
-  // Tracks regions whose TLS connection has been warmed up so the first timed
-  // sample measures steady-state latency rather than handshake cost. A region is
-  // only marked warmed once a warm-up ping SUCCEEDS, so cold/distant regions keep
-  // getting retried instead of being permanently skipped (issue #197).
-  private readonly warmedRegions = new Set<string>()
-
-  // All derived data as computed signals - no manual updates needed
-  public regionsWithMedian = computed<RegionWithLatencyMetrics[]>(() => {
-    const regions = Array.from(this.state().regions.values())
-    return regions.map((region) => ({
-      ...region,
-      medianLatency: this.calculateMedian(region.pingHistory),
-      currentLatency: region.pingHistory[region.pingHistory.length - 1] || 0
-    }))
-  })
-
-  private regionsWithLatency = computed<RegionWithLatencyMetrics[]>(() => {
-    return this.regionsWithMedian().filter((region) => region.medianLatency > 0)
-  })
-
-  public tableData = computed<RegionWithLatencyMetrics[]>(() => {
-    const regions = this.regionsWithLatency()
-    return regions.length ? [...regions].sort((a, b) => a.medianLatency - b.medianLatency) : []
-  })
-
-  public readonly isTestRunning = computed(() => this.state().isTestRunning)
+  public readonly regionsWithMedian = this.latencyTestStore.regionsWithMedian
+  public readonly tableData = this.latencyTestStore.tableData
+  public readonly isTestRunning = this.latencyTestStore.isTestRunning
 
   public readonly hasSelectedRegions = computed(
     () => this.regionService.selectedRegions().length > 0
   )
 
   public readonly shouldShowLatencySkeleton = computed(() => {
-    return this.hasSelectedRegions() && this.tableData().length === 0
+    return this.hasSelectedRegions() && this.isTestRunning() && this.tableData().length === 0
   })
 
-  public tableDataTop3 = computed<RegionWithLatencyMetrics[]>(() => this.tableData().slice(0, 3))
-  public bestRegion = computed<RegionWithLatencyMetrics | null>(() => {
-    const top = this.tableDataTop3()
-    return top.length ? top[0] : null
-  })
-  public runnerUpRegions = computed<RegionWithLatencyMetrics[]>(() => {
-    const top = this.tableDataTop3()
-    return top.length > 1 ? top.slice(1) : []
-  })
+  public readonly tableDataTop3 = this.latencyTestStore.tableDataTop3
+  public readonly bestRegion = this.latencyTestStore.bestRegion
+  public readonly runnerUpRegions = this.latencyTestStore.runnerUpRegions
   protected buildRegionRouterLink = buildRegionDetailRouterLink
 
   // CSV export data
@@ -174,10 +102,10 @@ export class LatencyComponent implements OnInit, OnDestroy {
     if (!this.hasValidLatency(latency)) {
       return 'unknown'
     }
-    if (latency < LatencyComponent.CONFIG.LATENCY_FAST) {
+    if (latency < LATENCY_TEST_CONFIG.LATENCY_FAST) {
       return 'fast'
     }
-    if (latency < LatencyComponent.CONFIG.LATENCY_ACCEPTABLE) {
+    if (latency < LATENCY_TEST_CONFIG.LATENCY_ACCEPTABLE) {
       return 'moderate'
     }
     return 'slow'
@@ -191,8 +119,6 @@ export class LatencyComponent implements OnInit, OnDestroy {
   trackByRegionData(_: number, item: RegionWithLatencyMetrics): string {
     return item.regionId || item.displayName
   }
-
-  private pingSubscription?: Subscription
 
   constructor() {
     this.registerInitialUrlStateEffect()
@@ -218,37 +144,12 @@ export class LatencyComponent implements OnInit, OnDestroy {
   private registerSelectedRegionsEffect(): void {
     effect(() => {
       const regions = this.regionService.selectedRegions()
-      const hasSelection = regions.length > 0
-      const hasReachedLimit = untracked(() => {
-        const currentState = this.state()
-        return currentState.pingAttemptCount >= LatencyComponent.CONFIG.MAX_PING_ATTEMPTS
-      })
-
       this.syncUrlWithSelection(regions)
-
-      if (!hasSelection) {
-        this.pendingPingUpdates.clear()
-        this.warmedRegions.clear()
-        this.initializeRegions([], { resetPingState: true })
-        this.stopPingTimer()
-        return
-      }
-
-      if (hasReachedLimit) {
-        this.pendingPingUpdates.clear()
-        this.warmedRegions.clear()
-        this.stopPingTimer()
-      }
-
-      this.initializeRegions(regions, { resetPingState: hasReachedLimit })
-
-      if (!this.pingSubscription) {
-        this.startPingTimer()
-      }
     })
   }
 
   ngOnInit(): void {
+    this.latencyTestStore.activate()
     this.seoService.applyPageSeo({
       title: 'Google Cloud Latency Test | Measure Cloud Run Region Latency',
       description:
@@ -294,10 +195,7 @@ export class LatencyComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.hasComponentDestroyed = true
-    this.stopPingTimer()
-    if (this.batchUpdateTimer) {
-      clearTimeout(this.batchUpdateTimer)
-    }
+    this.latencyTestStore.deactivate()
     this.cloudflareMetaStore.destroy()
   }
 
@@ -472,226 +370,5 @@ export class LatencyComponent implements OnInit, OnDestroy {
       return
     }
     this.shareUrl.set(window.location.href)
-  }
-
-  private initializeRegions(
-    regions: RegionModel[],
-    options: { resetPingState?: boolean } = {}
-  ): void {
-    const resetPingState = options.resetPingState ?? false
-    // Get the current state to preserve existing ping history
-    const currentState = untracked(() => this.state())
-    const currentRegions = currentState.regions
-
-    const regionMap = new Map(
-      regions
-        .filter((region) => region.url && region.regionId)
-        .map((region) => {
-          const key = region.regionId
-
-          // Check if this region already exists and has ping history
-          const existingRegion = currentRegions.get(key)
-
-          return [
-            key,
-            {
-              regionId: region.regionId,
-              geography: region.geography,
-              displayName: region.displayName,
-              url: region.url,
-              // Preserve existing ping history unless we are kicking off a fresh run
-              pingHistory: resetPingState ? [] : existingRegion?.pingHistory || [],
-              lastPingTime: resetPingState ? 0 : existingRegion?.lastPingTime || 0
-            }
-          ]
-        })
-    )
-
-    const hasRegions = regionMap.size > 0
-
-    this.state.set({
-      regions: regionMap,
-      // Reset ping attempt count when starting a new run or when no regions are selected
-      pingAttemptCount: resetPingState || !hasRegions ? 0 : currentState.pingAttemptCount || 0,
-      isTestRunning: hasRegions && !resetPingState ? currentState.isTestRunning : false
-    })
-  }
-
-  private startPingTimer(): void {
-    if (this.pingSubscription) {
-      return
-    }
-
-    this.state.update((state) => ({ ...state, isTestRunning: true }))
-
-    this.pingSubscription = timer(0, LatencyComponent.CONFIG.PING_INTERVAL_MS).subscribe(() => {
-      const currentState = this.state()
-      if (currentState.pingAttemptCount >= LatencyComponent.CONFIG.MAX_PING_ATTEMPTS) {
-        this.stopPingTimer()
-        return
-      }
-
-      void this.pingAllRegions()
-      this.state.update((state) => ({
-        ...state,
-        pingAttemptCount: state.pingAttemptCount + 1
-      }))
-    })
-  }
-
-  private stopPingTimer(): void {
-    if (!this.pingSubscription) {
-      return
-    }
-
-    this.pingSubscription.unsubscribe()
-    this.pingSubscription = undefined
-    this.state.update((state) => ({ ...state, isTestRunning: false }))
-  }
-
-  private async pingAllRegions(): Promise<void> {
-    const { CONCURRENT_PINGS } = LatencyComponent.CONFIG
-
-    const regions = Array.from(this.state().regions.values())
-
-    // Process in chunks for concurrency control
-    for (let i = 0; i < regions.length; i += CONCURRENT_PINGS) {
-      const chunk = regions.slice(i, i + CONCURRENT_PINGS)
-      await Promise.allSettled(chunk.map((region) => this.pingRegion(region)))
-    }
-  }
-
-  private async pingRegion(region: RegionPingData): Promise<void> {
-    if (!this.isBrowser) return
-    if (!region.url || !region.regionId) return
-
-    // Warm up the TLS connection once per region before recording any sample.
-    // A cold request pays DNS + TCP + TLS handshake cost (hundreds of ms), which
-    // dwarfs the actual round-trip. We only mark the region "warmed" when the
-    // warm-up ping actually succeeds, so cold/distant regions keep getting retried
-    // rather than being permanently skipped. See issue #197.
-    if (!this.warmedRegions.has(region.regionId)) {
-      const warmedUp = await this.sendPing(region.url)
-      if (!warmedUp) return
-      this.warmedRegions.add(region.regionId)
-    }
-
-    const startTime = performance.now()
-    const succeeded = await this.sendPing(region.url)
-    if (!succeeded) return
-
-    const latency = Math.round(performance.now() - startTime)
-    this.queuePingUpdate(region.regionId, latency)
-  }
-
-  private async sendPing(url: string): Promise<boolean> {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), LatencyComponent.CONFIG.PING_TIMEOUT_MS)
-
-    try {
-      // Cloud Run endpoints have no CORS, so a normal `mode: 'cors'` fetch rejects.
-      // We use `mode: 'no-cors'` HEAD requests: the response is opaque (status 0,
-      // unreadable) but the promise resolving means the round trip completed.
-      // Custom headers are forbidden in no-cors, and `cache: 'no-cache'` would
-      // trigger a preflight, so we rely on `cache: 'no-store'` plus the `?_=`
-      // cache-buster to defeat caching.
-      await fetch(`${url}?_=${Date.now()}`, {
-        method: 'HEAD',
-        mode: 'no-cors',
-        cache: 'no-store',
-        signal: controller.signal
-      })
-      return true
-    } catch {
-      // Silent fail: rejection means the region was unreachable within the timeout.
-      return false
-    } finally {
-      clearTimeout(timeoutId)
-    }
-  }
-
-  private queuePingUpdate(regionId: string, latency: number): void {
-    const { BATCH_UPDATE_DELAY_MS } = LatencyComponent.CONFIG
-
-    // No upper-bound latency filter: `sendPing` already aborts unsuccessful
-    // requests at PING_TIMEOUT_MS, so any value we get here is a real, completed
-    // round-trip. A hard cap silently dropped legitimately distant regions,
-    // making them vanish from the results entirely instead of showing their true
-    // latency. See issue #197.
-    this.pendingPingUpdates.set(regionId, latency)
-
-    // Batch updates to reduce state operations
-    if (!this.batchUpdateTimer) {
-      this.batchUpdateTimer = setTimeout(() => {
-        this.flushPingUpdates()
-        this.batchUpdateTimer = undefined
-      }, BATCH_UPDATE_DELAY_MS)
-    }
-  }
-
-  private flushPingUpdates(): void {
-    if (this.pendingPingUpdates.size === 0) return
-
-    const updates = new Map(this.pendingPingUpdates)
-    this.pendingPingUpdates.clear()
-
-    this.state.update((currentState) => {
-      const regions = new Map(currentState.regions)
-      const timestamp = Date.now()
-
-      for (const [regionId, latency] of updates) {
-        const region = regions.get(regionId)
-        if (!region) continue
-
-        // Update ping history (single source of truth)
-        const history = [...region.pingHistory, latency]
-        if (history.length > LatencyComponent.CONFIG.MAX_PING_HISTORY) {
-          history.shift()
-        }
-
-        regions.set(regionId, {
-          ...region,
-          pingHistory: history,
-          lastPingTime: timestamp
-        })
-      }
-
-      return {
-        ...currentState,
-        regions
-      }
-    })
-  }
-
-  private calculateMedian(values: number[]): number {
-    if (values.length === 0) return 0
-    if (values.length === 1) return values[0]
-
-    const sorted = [...values].sort((a, b) => a - b)
-
-    // Simple outlier removal for small samples
-    if (sorted.length <= 5 && sorted.length > 2) {
-      sorted.pop() // Remove highest
-    }
-
-    // IQR method for larger samples
-    if (sorted.length > 5) {
-      const q1 = sorted[Math.floor(sorted.length * 0.25)]
-      const q3 = sorted[Math.floor(sorted.length * 0.75)]
-      const iqr = q3 - q1
-      const lowerBound = q1 - 1.5 * iqr
-      const upperBound = q3 + 1.5 * iqr
-
-      const filtered = sorted.filter((v) => v >= lowerBound && v <= upperBound)
-      if (filtered.length > 0) {
-        const mid = Math.floor(filtered.length / 2)
-        return filtered.length % 2 === 0
-          ? Math.floor((filtered[mid - 1] + filtered[mid]) / 2)
-          : filtered[mid]
-      }
-    }
-
-    const mid = Math.floor(sorted.length / 2)
-    return sorted.length % 2 === 0 ? Math.floor((sorted[mid - 1] + sorted[mid]) / 2) : sorted[mid]
   }
 }
