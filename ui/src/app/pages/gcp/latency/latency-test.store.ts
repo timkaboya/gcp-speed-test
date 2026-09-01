@@ -20,7 +20,6 @@ export const LATENCY_TEST_CONFIG = {
   PING_TIMEOUT_MS: 5000,
   REQUEST_SETTLEMENT_GRACE_MS: 250,
   CONCURRENT_PINGS: 4,
-  TOOL_NAVIGATION_TIMEOUT_MS: 10_000,
   TOOL_RUN_DEADLINE_MS: 120_000,
   TOOL_RUN_COOLDOWN_MS: 15_000,
   TERMINAL_SNAPSHOT_TTL_MS: 300_000,
@@ -124,7 +123,6 @@ export class LatencyTestStore implements OnDestroy {
   private lastToolRunStartedAt = 0
   private activeRequestCount = 0
   private readonly permitQueue: PermitWaiter[] = []
-  private readonly viewActivationWaiters = new Set<(active: boolean) => void>()
 
   readonly state = this.stateSignal.asReadonly()
   readonly run = computed(() => this.stateSignal().run)
@@ -178,7 +176,6 @@ export class LatencyTestStore implements OnDestroy {
       return
     }
     this.viewActive = true
-    this.resolveViewActivationWaiters(true)
     if (!this.pendingToolRun) {
       this.startOrUpdateHumanRun(this.regionService.selectedRegions())
     }
@@ -200,41 +197,6 @@ export class LatencyTestStore implements OnDestroy {
     this.runController = undefined
     this.clearDeadline()
     this.clearTerminalToolState()
-    this.resolveViewActivationWaiters(false)
-  }
-
-  waitForViewActivation(signal: AbortSignal): Promise<boolean> {
-    if (this.viewActive) {
-      return Promise.resolve(true)
-    }
-    if (signal.aborted) {
-      return Promise.resolve(false)
-    }
-
-    return new Promise((resolve) => {
-      let settled = false
-      const finish = (active: boolean) => {
-        if (settled) {
-          return
-        }
-        settled = true
-        clearTimeout(timeoutId)
-        signal.removeEventListener('abort', abort)
-        this.viewActivationWaiters.delete(finish)
-        resolve(active)
-      }
-      const abort = () => finish(false)
-
-      const timeoutId = setTimeout(
-        () => finish(false),
-        LATENCY_TEST_CONFIG.TOOL_NAVIGATION_TIMEOUT_MS
-      )
-      signal.addEventListener('abort', abort, { once: true })
-      this.viewActivationWaiters.add(finish)
-      if (signal.aborted) {
-        finish(false)
-      }
-    })
   }
 
   reserveToolRun(
@@ -948,12 +910,6 @@ export class LatencyTestStore implements OnDestroy {
       (run.completedAt !== null &&
         Date.now() - run.completedAt <= LATENCY_TEST_CONFIG.TERMINAL_SNAPSHOT_TTL_MS)
     )
-  }
-
-  private resolveViewActivationWaiters(active: boolean): void {
-    for (const waiter of [...this.viewActivationWaiters]) {
-      waiter(active)
-    }
   }
 
   private isCurrentRun(runId: string, generation: number): boolean {

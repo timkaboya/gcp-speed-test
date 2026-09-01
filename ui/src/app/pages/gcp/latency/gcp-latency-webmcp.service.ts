@@ -198,8 +198,8 @@ export class GcpLatencyWebMcpService implements OnDestroy {
           additionalProperties: false
         },
         annotations: { readOnlyHint: true, untrustedContentHint: false },
-        execute: (input, { signal }) =>
-          this.ngZone.run(() => this.executeListRegions(input, signal))
+        execute: (input, options) =>
+          this.ngZone.run(() => this.executeListRegions(input, this.executionSignal(options)))
       },
       {
         name: WEBMCP_TOOL_NAMES[1],
@@ -248,8 +248,8 @@ export class GcpLatencyWebMcpService implements OnDestroy {
           additionalProperties: false
         },
         annotations: { readOnlyHint: false, untrustedContentHint: false },
-        execute: (input, { signal }) =>
-          this.ngZone.run(() => this.executeStartLatencyTest(input, signal))
+        execute: (input, options) =>
+          this.ngZone.run(() => this.executeStartLatencyTest(input, this.executionSignal(options)))
       },
       {
         name: WEBMCP_TOOL_NAMES[2],
@@ -286,7 +286,8 @@ export class GcpLatencyWebMcpService implements OnDestroy {
           additionalProperties: false
         },
         annotations: { readOnlyHint: true, untrustedContentHint: false },
-        execute: (input, { signal }) => this.ngZone.run(() => this.executeGetResults(input, signal))
+        execute: (input, options) =>
+          this.ngZone.run(() => this.executeGetResults(input, this.executionSignal(options)))
       },
       {
         name: WEBMCP_TOOL_NAMES[3],
@@ -306,8 +307,8 @@ export class GcpLatencyWebMcpService implements OnDestroy {
           additionalProperties: false
         },
         annotations: { readOnlyHint: false, untrustedContentHint: false },
-        execute: (input, { signal }) =>
-          this.ngZone.run(() => this.executeStopLatencyTest(input, signal))
+        execute: (input, options) =>
+          this.ngZone.run(() => this.executeStopLatencyTest(input, this.executionSignal(options)))
       }
     ]
   }
@@ -380,7 +381,7 @@ export class GcpLatencyWebMcpService implements OnDestroy {
       return this.startFailure(reservation)
     }
 
-    let navigated = this.isLatencyPage()
+    let navigated = this.isSettledLatencyPage()
     if (!navigated) {
       try {
         navigated = await this.router.navigateByUrl('/')
@@ -398,25 +399,14 @@ export class GcpLatencyWebMcpService implements OnDestroy {
       this.latencyTestStore.cancelToolRunReservation(reservation.runId, 'tool_cancelled')
       return this.cancelledError()
     }
-    if (!navigated) {
+    if (!navigated || !this.isSettledLatencyPage()) {
       this.latencyTestStore.cancelToolRunReservation(reservation.runId, 'navigation_failed')
       return this.error(
         'NAVIGATION_FAILED',
         'The latency page could not be opened, so no test was started.'
       )
     }
-    const viewActive = await this.latencyTestStore.waitForViewActivation(signal)
-    if (signal.aborted) {
-      this.latencyTestStore.cancelToolRunReservation(reservation.runId, 'tool_cancelled')
-      return this.cancelledError()
-    }
-    if (!viewActive) {
-      this.latencyTestStore.cancelToolRunReservation(reservation.runId, 'navigation_failed')
-      return this.error(
-        'NAVIGATION_FAILED',
-        'The latency page did not become ready, so no test was started.'
-      )
-    }
+    this.latencyTestStore.activate()
     if (!this.latencyTestStore.commitToolRun(reservation.runId)) {
       this.latencyTestStore.cancelToolRunReservation(reservation.runId, 'page_state_changed')
       return this.error(
@@ -813,6 +803,14 @@ export class GcpLatencyWebMcpService implements OnDestroy {
   private isLatencyPage(): boolean {
     const path = this.router.url.split(/[?#]/, 1)[0]
     return path === '' || path === '/'
+  }
+
+  private isSettledLatencyPage(): boolean {
+    return this.router.navigated && this.router.currentNavigation() === null && this.isLatencyPage()
+  }
+
+  private executionSignal(options?: WebMCP.ToolExecuteCallbackOptions): AbortSignal {
+    return options?.signal ?? new AbortController().signal
   }
 
   private cancelledError(): ToolError {

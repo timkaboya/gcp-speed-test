@@ -133,7 +133,9 @@ declarative form tools or iframe registrations.
 
 Chrome's implementation is available for local testing with
 `chrome://flags/#enable-webmcp-testing` and its Model Context Tool Inspector.
-WebMCP remains a draft, so compatibility must be reconfirmed before rollout.
+The current implementation was also exercised through Chrome 152's native
+WebMCP CDP domain with Puppeteer 25.9.0. WebMCP remains a draft, so
+compatibility must be reconfirmed before rollout.
 
 Automated validation from `ui/`:
 
@@ -193,15 +195,30 @@ data migration.
 - Added the four imperative tools, strict schemas and runtime validators,
   navigation-safe reservations, compact revision-pinned result pagination,
   five-minute terminal snapshots, and a visible `aria-live` run status.
-- An independent defect review added an explicit routed-view activation
-  handshake, ensured selection-suppression tokens cannot outlive their intended
-  update, and required revisions to be paired with a run ID so pages cannot be
-  mixed across runs.
+- An independent defect review made routed starts activate the root store after
+  successful SPA navigation, ensured selection-suppression tokens cannot
+  outlive their intended update, and required revisions to be paired with a run
+  ID so pages cannot be mixed across runs.
+- A final staged review required Angular's initial navigation to be complete and
+  idle on the latency route before synthetic activation, preventing an early
+  tool call from starting a hidden run behind another lazy route.
+- Chrome 152 end-to-end testing showed that CDP invocation can omit the
+  documented execution-options argument. Handlers now supply a never-aborted
+  fallback signal while continuing to honor a browser-provided cancellation
+  signal.
 - Added same-origin hosting headers, crawler guidance, privacy disclosure, the
   emergency kill switch, fake-ModelContext unit tests, and SSR guards.
 - Implementation branch: `timkaboya/webmcp-site-tools`, stacked on PR #45.
-- Automated gate: lint passed; 154 tests passed; coverage reached 81.59%
-  statements, 80.18% branches, 86.98% functions, and 82.75% lines; the
+- Automated gate: lint passed; 156 tests passed; coverage reached 81.74%
+  statements, 80.64% branches, 87.42% functions, and 82.90% lines; the
   production build prerendered all six routes with Angular 22.0.4.
-- The Chrome Model Context Tool Inspector and actual ChatGPT desktop invocation
-  remain required manual pre-merge gates.
+- A production-build smoke test using Chrome 152.0.7977.65 and Puppeteer 25.9.0
+  discovered all four tools through the native WebMCP CDP domain, verified
+  schemas/annotations and origin isolation, filtered regions, rejected invalid
+  input, completed a two-region live run, paginated ranked results, stopped a
+  terminal run idempotently, cancelled an active run, and retrieved its retained
+  snapshot. Outputs remained below 1.5 KiB and exposed no endpoint or connection
+  details.
+- Actual ChatGPT desktop invocation remains a required manual pre-merge gate
+  because that signed-in client is not installed in the implementation
+  environment.

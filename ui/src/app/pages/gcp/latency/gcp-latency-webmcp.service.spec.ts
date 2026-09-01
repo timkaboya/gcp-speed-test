@@ -78,8 +78,14 @@ describe('GcpLatencyWebMcpService', () => {
   let service: GcpLatencyWebMcpService
   let store: LatencyTestStore
   let regionService: RegionService
+  let navigationInProgress: boolean
   let navigateByUrl: ReturnType<typeof vi.fn>
-  let routerStub: { url: string; navigateByUrl: ReturnType<typeof vi.fn> }
+  let routerStub: {
+    url: string
+    navigated: boolean
+    currentNavigation: () => object | null
+    navigateByUrl: ReturnType<typeof vi.fn>
+  }
 
   const execute = async (
     name: ToolName,
@@ -99,8 +105,20 @@ describe('GcpLatencyWebMcpService', () => {
       configurable: true,
       value: modelContext
     })
-    navigateByUrl = vi.fn().mockResolvedValue(true)
-    routerStub = { url: '/Privacy', navigateByUrl }
+    navigationInProgress = false
+    navigateByUrl = vi.fn()
+    routerStub = {
+      url: '/Privacy',
+      navigated: true,
+      currentNavigation: () => (navigationInProgress ? {} : null),
+      navigateByUrl
+    }
+    navigateByUrl.mockImplementation(async (url: string) => {
+      routerStub.url = url
+      routerStub.navigated = true
+      navigationInProgress = false
+      return true
+    })
     TestBed.configureTestingModule({
       providers: [
         GcpLatencyWebMcpService,
@@ -149,6 +167,15 @@ describe('GcpLatencyWebMcpService', () => {
     service.ngOnDestroy()
     expect(modelContext.tools.size).toBe(0)
     expect(modelContext.registrationOptions.size).toBe(0)
+  })
+
+  it('accepts Chrome invocations that omit the optional execution context', async () => {
+    const tool = modelContext.tools.get('list_gcp_regions')
+    expect(tool).toBeDefined()
+
+    const result = await Reflect.apply(tool!.execute, undefined, [{ limit: 1 }])
+
+    expect(result).toMatchObject({ returned: 1 })
   })
 
   it('lists filtered regions with stable pagination and no endpoint URLs', async () => {
@@ -306,22 +333,35 @@ describe('GcpLatencyWebMcpService', () => {
     expect(navigateByUrl).not.toHaveBeenCalled()
   })
 
-  it('waits for the routed latency view to activate before committing a cross-route run', async () => {
+  it('forces root navigation while the router still exposes its pre-navigation root URL', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockImplementation(() => new Promise<Response>(() => undefined))
     )
-    const pending = execute('start_gcp_latency_test', {
+    routerStub.url = '/'
+    routerStub.navigated = false
+    navigationInProgress = true
+
+    const started = await execute('start_gcp_latency_test', {
       scope: 'regions',
       regionIds: ['europe-west2']
     })
 
-    await Promise.resolve()
-    await Promise.resolve()
-    expect(store.run()).toBeNull()
-    store.activate()
+    expect(started).toMatchObject({ ok: true, status: 'running' })
+    expect(navigateByUrl).toHaveBeenCalledWith('/')
+  })
 
-    await expect(pending).resolves.toMatchObject({ ok: true, status: 'running' })
+  it('activates the store before committing a cross-route run', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() => new Promise<Response>(() => undefined))
+    )
+    const started = await execute('start_gcp_latency_test', {
+      scope: 'regions',
+      regionIds: ['europe-west2']
+    })
+
+    expect(started).toMatchObject({ ok: true, status: 'running' })
     expect(store.run()).toMatchObject({ owner: 'webmcp', status: 'running' })
   })
 
