@@ -4,55 +4,22 @@ import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { provideRouter } from '@angular/router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { RegionService } from '../../../services'
+import { LatencyTestStore } from './latency-test.store'
 import { LatencyComponent } from './latency.component'
 
-interface RegionPingData {
-  regionId: string
-  geography: string
-  displayName: string
-  url: string
-  pingHistory: number[]
-  lastPingTime: number
-}
-
-// Typed access to the private members exercised by these tests, avoiding `any`.
-interface LatencyInternals {
-  calculateMedian(values: number[]): number
+interface LatencyViewInternals {
   getLatencyBadgeState(latency: number | null | undefined): string
-  sendPing(url: string): Promise<boolean>
-  pingRegion(region: RegionPingData): Promise<void>
-  queuePingUpdate(regionId: string, latency: number): void
-  flushPingUpdates(): void
-  warmedRegions: Set<string>
-  pendingPingUpdates: Map<string, number>
-  state: {
-    set(value: {
-      regions: Map<string, RegionPingData>
-      pingAttemptCount: number
-      isTestRunning: boolean
-    }): void
-  }
+  trackByRegionData(index: number, item: { regionId: string; displayName: string }): string
 }
 
-function internals(component: LatencyComponent): LatencyInternals {
-  return component as unknown as LatencyInternals
-}
-
-function makeRegion(overrides: Partial<RegionPingData> = {}): RegionPingData {
-  return {
-    regionId: 'us-east1',
-    geography: 'Americas',
-    displayName: 'South Carolina',
-    url: 'https://endpoint.example',
-    pingHistory: [],
-    lastPingTime: 0,
-    ...overrides
-  }
-}
+const viewInternals = (component: LatencyComponent): LatencyViewInternals =>
+  component as unknown as LatencyViewInternals
 
 describe('LatencyComponent', () => {
   let fixture: ComponentFixture<LatencyComponent>
   let component: LatencyComponent
+  let store: LatencyTestStore
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -63,140 +30,74 @@ describe('LatencyComponent', () => {
         { provide: PLATFORM_ID, useValue: 'browser' }
       ]
     })
-    // RegionService now loads its region list synchronously from the bundled
-    // endpoints data, so there is no HTTP request to flush here. Tests that need
-    // an active selection set component state directly.
     fixture = TestBed.createComponent(LatencyComponent)
     component = fixture.componentInstance
+    store = TestBed.inject(LatencyTestStore)
   })
 
   afterEach(() => {
+    fixture.destroy()
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
   })
 
-  describe('calculateMedian', () => {
-    it('returns 0 for an empty sample', () => {
-      expect(internals(component).calculateMedian([])).toBe(0)
-    })
-
-    it('returns the only value for a single sample', () => {
-      expect(internals(component).calculateMedian([42])).toBe(42)
-    })
-
-    it('drops the highest value for small (3-5) samples', () => {
-      // [10, 20, 100] -> highest removed -> median of [10, 20] = 15
-      expect(internals(component).calculateMedian([10, 20, 100])).toBe(15)
-    })
-
-    it('uses the IQR method for larger samples', () => {
-      const values = [10, 12, 11, 13, 12, 500]
-      expect(internals(component).calculateMedian(values)).toBeGreaterThan(0)
-      // The 500ms outlier is filtered out of the median.
-      expect(internals(component).calculateMedian(values)).toBeLessThan(100)
-    })
+  it('classifies latency bands and unknown values', () => {
+    const view = viewInternals(component)
+    expect(view.getLatencyBadgeState(null)).toBe('unknown')
+    expect(view.getLatencyBadgeState(0)).toBe('unknown')
+    expect(view.getLatencyBadgeState(50)).toBe('fast')
+    expect(view.getLatencyBadgeState(150)).toBe('moderate')
+    expect(view.getLatencyBadgeState(400)).toBe('slow')
   })
 
-  describe('getLatencyBadgeState', () => {
-    it('classifies latency bands and unknown values', () => {
-      const priv = internals(component)
-      expect(priv.getLatencyBadgeState(null)).toBe('unknown')
-      expect(priv.getLatencyBadgeState(0)).toBe('unknown')
-      expect(priv.getLatencyBadgeState(50)).toBe('fast')
-      expect(priv.getLatencyBadgeState(150)).toBe('moderate')
-      expect(priv.getLatencyBadgeState(400)).toBe('slow')
-    })
+  it('tracks result rows by region ID with display name as fallback', () => {
+    const view = viewInternals(component)
+    expect(view.trackByRegionData(0, { regionId: 'us-east1', displayName: 'South Carolina' })).toBe(
+      'us-east1'
+    )
+    expect(view.trackByRegionData(0, { regionId: '', displayName: 'Unknown' })).toBe('Unknown')
   })
 
-  describe('sendPing', () => {
-    it('issues a no-cors HEAD request with no-store caching and resolves true', async () => {
-      const fetchMock = vi.fn().mockResolvedValue({} as Response)
-      vi.stubGlobal('fetch', fetchMock)
-
-      const result = await internals(component).sendPing('https://endpoint.example')
-
-      expect(result).toBe(true)
-      const [url, init] = fetchMock.mock.calls[0]
-      expect(String(url)).toContain('https://endpoint.example')
-      expect(init.method).toBe('HEAD')
-      // no-cors + no-store avoids a CORS preflight against Cloud Run endpoints.
-      expect(init.mode).toBe('no-cors')
-      expect(init.cache).toBe('no-store')
-    })
-
-    it('resolves false when the request rejects', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network')))
-      expect(await internals(component).sendPing('https://endpoint.example')).toBe(false)
-    })
+  it('uses the shared latency store for visible result signals', () => {
+    expect(component.tableData).toBe(store.tableData)
+    expect(component.bestRegion).toBe(store.bestRegion)
+    expect(component.isTestRunning).toBe(store.isTestRunning)
   })
 
-  describe('pingRegion', () => {
-    it('does not mark a region warmed when the warm-up ping fails', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('cold')))
-      const priv = internals(component)
+  it('activates the store on init and deactivates it on destroy', () => {
+    const activate = vi.spyOn(store, 'activate')
+    const deactivate = vi.spyOn(store, 'deactivate')
 
-      await priv.pingRegion(makeRegion())
+    fixture.detectChanges()
+    expect(activate).toHaveBeenCalledOnce()
 
-      expect(priv.warmedRegions.has('us-east1')).toBe(false)
-      expect(priv.pendingPingUpdates.size).toBe(0)
-    })
-
-    it('records a large latency (no upper cap) once the region is warmed', async () => {
-      // First call = warm-up (success), second call = timed request (success).
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({} as Response))
-      // 5000ms round trip: start=1000, end=6000.
-      vi.spyOn(performance, 'now').mockReturnValueOnce(1000).mockReturnValueOnce(6000)
-      const priv = internals(component)
-
-      await priv.pingRegion(makeRegion())
-
-      expect(priv.warmedRegions.has('us-east1')).toBe(true)
-      expect(priv.pendingPingUpdates.get('us-east1')).toBe(5000)
-    })
-
-    it('skips regions without a url or id', async () => {
-      const fetchMock = vi.fn()
-      vi.stubGlobal('fetch', fetchMock)
-      await internals(component).pingRegion(makeRegion({ url: '' }))
-      expect(fetchMock).not.toHaveBeenCalled()
-    })
+    fixture.destroy()
+    expect(deactivate).toHaveBeenCalledOnce()
   })
 
-  describe('flushPingUpdates', () => {
-    it('appends queued latencies to region ping history and computes a median', () => {
-      const priv = internals(component)
-      const region = makeRegion()
-      priv.state.set({
-        regions: new Map([[region.regionId, region]]),
-        pingAttemptCount: 0,
-        isTestRunning: false
-      })
+  it('does not show a loading skeleton after a run has stopped without results', () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(
+        (_url: string, request: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            const signal = request.signal as AbortSignal
+            signal.addEventListener('abort', () =>
+              reject(new DOMException('Aborted', 'AbortError'))
+            )
+          })
+      )
+    )
+    const regionService = TestBed.inject(RegionService)
+    regionService.updateSelectedRegions([regionService.regions()[0]])
+    fixture.detectChanges()
+    TestBed.flushEffects()
+    expect(component.shouldShowLatencySkeleton()).toBe(true)
 
-      priv.queuePingUpdate('us-east1', 5000)
-      priv.flushPingUpdates()
+    store.deactivate()
+    fixture.detectChanges()
 
-      const row = component.regionsWithMedian().find((r) => r.regionId === 'us-east1')
-      expect(row?.pingHistory).toContain(5000)
-      expect(row?.currentLatency).toBe(5000)
-      expect(row?.medianLatency).toBe(5000)
-    })
-  })
-
-  describe('csvRows', () => {
-    it('is null with no data and populated once regions have latency', () => {
-      const priv = internals(component)
-      expect(component.csvRows()).toBeNull()
-
-      const region = makeRegion({ pingHistory: [12, 14, 13] })
-      priv.state.set({
-        regions: new Map([[region.regionId, region]]),
-        pingAttemptCount: 0,
-        isTestRunning: false
-      })
-
-      const rows = component.csvRows()
-      expect(rows).not.toBeNull()
-      expect(rows![0][2]).toBe('us-east1')
-    })
+    expect(component.shouldShowLatencySkeleton()).toBe(false)
+    expect(fixture.nativeElement.textContent).toContain('No latency data received')
   })
 })

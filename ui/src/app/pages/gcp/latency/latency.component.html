@@ -315,10 +315,17 @@
               aria-hidden="true"
             />
             <div class="space-y-1">
-              <p class="text-lg font-semibold text-text-strong">No latency data yet</p>
-              <p class="text-sm text-text-muted">
-                Select regions above and wait for results to appear.
-              </p>
+              @if (hasSelectedRegions()) {
+                <p class="text-lg font-semibold text-text-strong">No latency data received</p>
+                <p class="text-sm text-text-muted">
+                  The selected regions did not respond. Change the selection to try again.
+                </p>
+              } @else {
+                <p class="text-lg font-semibold text-text-strong">No latency data yet</p>
+                <p class="text-sm text-text-muted">
+                  Select regions above and wait for results to appear.
+                </p>
+              }
             </div>
           </div>
         }
