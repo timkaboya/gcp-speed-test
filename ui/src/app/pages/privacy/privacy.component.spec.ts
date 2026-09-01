@@ -10,5 +10,8 @@ describe('PrivacyComponent', () => {
     const fixture = TestBed.createComponent(PrivacyComponent)
     fixture.detectChanges()
     expect(TestBed.inject(Title).getTitle()).toContain('Privacy Policy')
+    expect(fixture.nativeElement.textContent).toContain('compatible browser agent')
+    expect(fixture.nativeElement.textContent).toContain('source IP address')
+    expect(fixture.nativeElement.textContent).toContain('not uploaded')
   })
 })

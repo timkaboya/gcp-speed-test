@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { RegionModel } from '../../../models'
 import { RegionService } from '../../../services'
-import { LatencyTestStore } from './latency-test.store'
+import { LATENCY_TEST_CONFIG, LatencyTestStore } from './latency-test.store'
 
 const makeRegion = (index = 1): RegionModel => ({
   regionId: `us-test${index}`,
@@ -193,6 +193,36 @@ describe('LatencyTestStore', () => {
     expect(Array.from(store.state().regions.keys())).toEqual(['us-test2'])
   })
 
+  it('consumes stale selection suppression before a user restores a previous selection', () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(
+        (_url: string, request: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            const signal = request.signal as AbortSignal
+            signal.addEventListener('abort', () =>
+              reject(new DOMException('Aborted', 'AbortError'))
+            )
+          })
+      )
+    )
+    const originalSelection = [makeRegion(1)]
+    regionService.updateSelectedRegions(originalSelection)
+    store.activate()
+    const start = store.reserveToolRun(originalSelection, 1, true)
+    expect(start.ok).toBe(true)
+    if (!start.ok) return
+    store.commitToolRun(start.runId)
+
+    regionService.updateSelectedRegions([makeRegion(2)])
+    TestBed.flushEffects()
+    expect(Array.from(store.state().regions.keys())).toEqual(['us-test2'])
+
+    regionService.updateSelectedRegions(originalSelection)
+    TestBed.flushEffects()
+    expect(Array.from(store.state().regions.keys())).toEqual(['us-test1'])
+  })
+
   it('keeps an active human run intact when a replacement reservation is cancelled', async () => {
     const requestSignals: AbortSignal[] = []
     vi.stubGlobal(
@@ -326,6 +356,52 @@ describe('LatencyTestStore', () => {
       ok: false,
       code: 'COOLDOWN'
     })
+  })
+
+  it('retains a stopped tool snapshot after deactivation and expires it after five minutes', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() => new Promise<Response>(() => undefined))
+    )
+    store.activate()
+    const start = store.reserveToolRun([makeRegion()], 1, false)
+    expect(start.ok).toBe(true)
+    if (!start.ok) return
+    store.commitToolRun(start.runId)
+    store.stopToolRun(start.runId)
+    store.deactivate()
+
+    expect(store.getToolRunState(start.runId)?.run?.status).toBe('cancelled')
+    expect(store.stopToolRun(start.runId)).toBe('cancelled')
+
+    await vi.advanceTimersByTimeAsync(LATENCY_TEST_CONFIG.TERMINAL_SNAPSHOT_TTL_MS + 1)
+
+    expect(store.getToolRunState(start.runId)).toBeNull()
+    expect(store.stopToolRun(start.runId)).toBeNull()
+  })
+
+  it('drops the previous terminal snapshot when a newer tool run starts', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() => new Promise<Response>(() => undefined))
+    )
+    store.activate()
+    const first = store.reserveToolRun([makeRegion()], 1, false)
+    expect(first.ok).toBe(true)
+    if (!first.ok) return
+    store.commitToolRun(first.runId)
+    store.stopToolRun(first.runId)
+
+    await vi.advanceTimersByTimeAsync(LATENCY_TEST_CONFIG.TOOL_RUN_COOLDOWN_MS)
+    const second = store.reserveToolRun([makeRegion(2)], 1, false)
+    expect(second.ok).toBe(true)
+    if (!second.ok) return
+    store.commitToolRun(second.runId)
+
+    expect(store.getToolRunState(first.runId)).toBeNull()
+    expect(store.getToolRunState(second.runId)?.run?.status).toBe('running')
   })
 
   it('does not activate or issue requests on the server platform', () => {

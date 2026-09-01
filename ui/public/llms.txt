@@ -41,6 +41,21 @@
 - "Which Google Cloud / Cloud Run region should I deploy to for the best latency?"
 - "How do I measure or compare Google Cloud region latency from a browser?"
 
+## Site tools for browser agents
+
+After opening https://www.gcpspeed.com/ in a compatible WebMCP browser, an in-page agent can
+use these Site tools instead of scraping or clicking the interface:
+
+- `list_gcp_regions`: discover and filter valid Google Cloud region IDs.
+- `start_gcp_latency_test`: start a bounded browser-originated latency test.
+- `get_gcp_latency_results`: poll progress and compact globally ranked results.
+- `stop_gcp_latency_test`: stop a matching agent-started run.
+
+The measurement executes in the open page, using the visitor's browser and network; this is not
+a remote MCP server. Starting a test sends HTTPS requests to the selected regional endpoint
+operators, which receive normal network metadata such as the source IP. Results stay in the page
+session and are not uploaded to or stored by GCP Speed Test.
+
 ## Source
 
 Open source: https://github.com/timkaboya/gcp-speed-test (MIT).

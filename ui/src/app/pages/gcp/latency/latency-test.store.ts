@@ -1,5 +1,14 @@
 import { isPlatformBrowser } from '@angular/common'
-import { computed, effect, inject, Injectable, PLATFORM_ID, signal, untracked } from '@angular/core'
+import {
+  computed,
+  effect,
+  inject,
+  Injectable,
+  OnDestroy,
+  PLATFORM_ID,
+  signal,
+  untracked
+} from '@angular/core'
 
 import { RegionModel } from '../../../models'
 import { RegionService } from '../../../services'
@@ -11,6 +20,7 @@ export const LATENCY_TEST_CONFIG = {
   PING_TIMEOUT_MS: 5000,
   REQUEST_SETTLEMENT_GRACE_MS: 250,
   CONCURRENT_PINGS: 4,
+  TOOL_NAVIGATION_TIMEOUT_MS: 10_000,
   TOOL_RUN_DEADLINE_MS: 120_000,
   TOOL_RUN_COOLDOWN_MS: 15_000,
   TERMINAL_SNAPSHOT_TTL_MS: 300_000,
@@ -55,7 +65,7 @@ export interface LatencyRun {
   reason?: string
 }
 
-interface LatencyState {
+export interface LatencyState {
   regions: Map<string, RegionPingData>
   run: LatencyRun | null
   revision: number
@@ -93,7 +103,7 @@ export type ToolRunStartResult = ToolRunStartSuccess | ToolRunStartFailure
 type PingResult = 'success' | 'network' | 'timeout' | 'aborted' | 'budget'
 
 @Injectable({ providedIn: 'root' })
-export class LatencyTestStore {
+export class LatencyTestStore implements OnDestroy {
   private readonly regionService = inject(RegionService)
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID))
   private readonly stateSignal = signal<LatencyState>({
@@ -101,17 +111,20 @@ export class LatencyTestStore {
     run: null,
     revision: 0
   })
+  private readonly terminalToolStateSignal = signal<LatencyState | null>(null)
   private readonly warmedRegions = new Set<string>()
 
   private viewActive = false
   private generation = 0
   private runController?: AbortController
   private deadlineTimer?: ReturnType<typeof setTimeout>
+  private terminalSnapshotTimer?: ReturnType<typeof setTimeout>
   private pendingToolRun?: ToolRunReservation
   private ignoredSelectionSignature = ''
   private lastToolRunStartedAt = 0
   private activeRequestCount = 0
   private readonly permitQueue: PermitWaiter[] = []
+  private readonly viewActivationWaiters = new Set<(active: boolean) => void>()
 
   readonly state = this.stateSignal.asReadonly()
   readonly run = computed(() => this.stateSignal().run)
@@ -138,6 +151,20 @@ export class LatencyTestStore {
     () => this.tableDataTop3()[0] ?? null
   )
   readonly runnerUpRegions = computed(() => this.tableDataTop3().slice(1))
+  readonly toolRunSummary = computed(() => {
+    const current = this.stateSignal()
+    const state =
+      current.run?.owner === 'webmcp' && this.isActive(current.run)
+        ? current
+        : this.terminalToolStateSignal()
+    if (!state?.run) {
+      return null
+    }
+    return {
+      run: { ...state.run },
+      regionCount: state.regions.size
+    }
+  })
 
   constructor() {
     effect(() => {
@@ -151,6 +178,7 @@ export class LatencyTestStore {
       return
     }
     this.viewActive = true
+    this.resolveViewActivationWaiters(true)
     if (!this.pendingToolRun) {
       this.startOrUpdateHumanRun(this.regionService.selectedRegions())
     }
@@ -165,6 +193,48 @@ export class LatencyTestStore {
     this.pendingToolRun = undefined
     this.warmedRegions.clear()
     this.stateSignal.set({ regions: new Map(), run: null, revision: 0 })
+  }
+
+  ngOnDestroy(): void {
+    this.runController?.abort('store_destroyed')
+    this.runController = undefined
+    this.clearDeadline()
+    this.clearTerminalToolState()
+    this.resolveViewActivationWaiters(false)
+  }
+
+  waitForViewActivation(signal: AbortSignal): Promise<boolean> {
+    if (this.viewActive) {
+      return Promise.resolve(true)
+    }
+    if (signal.aborted) {
+      return Promise.resolve(false)
+    }
+
+    return new Promise((resolve) => {
+      let settled = false
+      const finish = (active: boolean) => {
+        if (settled) {
+          return
+        }
+        settled = true
+        clearTimeout(timeoutId)
+        signal.removeEventListener('abort', abort)
+        this.viewActivationWaiters.delete(finish)
+        resolve(active)
+      }
+      const abort = () => finish(false)
+
+      const timeoutId = setTimeout(
+        () => finish(false),
+        LATENCY_TEST_CONFIG.TOOL_NAVIGATION_TIMEOUT_MS
+      )
+      signal.addEventListener('abort', abort, { once: true })
+      this.viewActivationWaiters.add(finish)
+      if (signal.aborted) {
+        finish(false)
+      }
+    })
   }
 
   reserveToolRun(
@@ -242,6 +312,7 @@ export class LatencyTestStore {
     if (this.isActive(currentRun)) {
       this.finishRun('cancelled', 'replaced')
     }
+    this.clearTerminalToolState()
     this.ignoredSelectionSignature = this.selectionSignature(regions)
     this.regionService.updateSelectedRegions(regions)
     this.warmedRegions.clear()
@@ -285,14 +356,18 @@ export class LatencyTestStore {
 
   stopToolRun(runId: string): LatencyRunStatus | null {
     const run = this.stateSignal().run
-    if (run?.owner !== 'webmcp' || run.runId !== runId) {
-      return null
+    if (run?.owner === 'webmcp' && run.runId === runId) {
+      if (!this.isActive(run) && this.isFreshToolRun(run)) {
+        return run.status
+      }
+      if (this.isActive(run)) {
+        this.finishRun('cancelled', 'tool_stopped')
+        return 'cancelled'
+      }
     }
-    if (!this.isActive(run)) {
-      return run.status
-    }
-    this.finishRun('cancelled', 'tool_stopped')
-    return 'cancelled'
+
+    const terminal = this.getFreshTerminalToolState()
+    return terminal?.run?.runId === runId ? terminal.run.status : null
   }
 
   calculateMedian(values: number[]): number {
@@ -306,15 +381,35 @@ export class LatencyTestStore {
     return this.cloneState(this.stateSignal())
   }
 
+  getToolRunState(runId?: string): LatencyState | null {
+    const current = this.stateSignal()
+    if (
+      current.run?.owner === 'webmcp' &&
+      (!runId || current.run.runId === runId) &&
+      this.isFreshToolRun(current.run)
+    ) {
+      return this.cloneState(current)
+    }
+
+    const terminal = this.getFreshTerminalToolState()
+    if (terminal?.run && (!runId || terminal.run.runId === runId)) {
+      return this.cloneState(terminal)
+    }
+    return null
+  }
+
   private handleRegionSelection(regions: RegionModel[]): void {
     if (!this.viewActive) {
       return
     }
 
     const signature = this.selectionSignature(regions)
-    if (this.ignoredSelectionSignature && signature === this.ignoredSelectionSignature) {
+    if (this.ignoredSelectionSignature) {
+      const shouldIgnoreSelection = signature === this.ignoredSelectionSignature
       this.ignoredSelectionSignature = ''
-      return
+      if (shouldIgnoreSelection) {
+        return
+      }
     }
 
     if (this.pendingToolRun) {
@@ -792,6 +887,10 @@ export class LatencyTestStore {
           }
         : null
     }))
+    const finishedState = this.stateSignal()
+    if (finishedState.run?.owner === 'webmcp') {
+      this.retainTerminalToolState(finishedState)
+    }
     this.runController?.abort(reason)
     this.runController = undefined
     this.generation += 1
@@ -808,6 +907,52 @@ export class LatencyTestStore {
     if (this.deadlineTimer) {
       clearTimeout(this.deadlineTimer)
       this.deadlineTimer = undefined
+    }
+  }
+
+  private retainTerminalToolState(state: LatencyState): void {
+    const snapshot = this.cloneState(state)
+    const runId = snapshot.run?.runId
+    this.clearTerminalToolState()
+    this.terminalToolStateSignal.set(snapshot)
+    this.terminalSnapshotTimer = setTimeout(() => {
+      if (this.terminalToolStateSignal()?.run?.runId === runId) {
+        this.terminalToolStateSignal.set(null)
+      }
+      this.terminalSnapshotTimer = undefined
+    }, LATENCY_TEST_CONFIG.TERMINAL_SNAPSHOT_TTL_MS)
+  }
+
+  private clearTerminalToolState(): void {
+    if (this.terminalSnapshotTimer) {
+      clearTimeout(this.terminalSnapshotTimer)
+      this.terminalSnapshotTimer = undefined
+    }
+    this.terminalToolStateSignal.set(null)
+  }
+
+  private getFreshTerminalToolState(): LatencyState | null {
+    const terminal = this.terminalToolStateSignal()
+    if (!terminal?.run || !this.isFreshToolRun(terminal.run)) {
+      if (terminal) {
+        this.clearTerminalToolState()
+      }
+      return null
+    }
+    return terminal
+  }
+
+  private isFreshToolRun(run: LatencyRun): boolean {
+    return (
+      this.isActive(run) ||
+      (run.completedAt !== null &&
+        Date.now() - run.completedAt <= LATENCY_TEST_CONFIG.TERMINAL_SNAPSHOT_TTL_MS)
+    )
+  }
+
+  private resolveViewActivationWaiters(active: boolean): void {
+    for (const waiter of [...this.viewActivationWaiters]) {
+      waiter(active)
     }
   }
 
