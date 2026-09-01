@@ -19,6 +19,7 @@ import {
   RouterOutlet
 } from '@angular/router'
 
+import { GcpLatencyWebMcpService } from './pages/gcp/latency/gcp-latency-webmcp.service'
 import { FooterComponent } from './shared/footer/footer.component'
 import { LucideIconComponent } from './shared/icons/lucide-icons.component'
 import { NavGroup, NavGroupsComponent } from './shared/nav-groups/nav-groups.component'
@@ -53,6 +54,7 @@ export class App {
   readonly showRouteLoader = computed(
     () => this.hasCompletedInitialNavigation() && this.isRouteLoading()
   )
+  readonly webMcpStatus = inject(GcpLatencyWebMcpService).statusMessage
 
   readonly navGroups = signal<NavGroup[]>([
     {

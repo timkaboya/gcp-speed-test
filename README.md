@@ -12,6 +12,41 @@ backendless Angular app inspired by [azure-speed-test][azure] and
 each Google Cloud region and measures the round-trip time with the
 `Performance` API, giving you a live view of which regions are closest to you.
 
+## Site tools for browser agents
+
+GCP Speed Test exposes its existing browser workflow as progressive-enhancement
+[WebMCP][webmcp] Site tools. After an agent opens the page in a compatible
+browser, it can use structured operations instead of scraping the DOM:
+
+| Tool                      | Purpose                                           |
+| ------------------------- | ------------------------------------------------- |
+| `list_gcp_regions`        | Discover and filter valid region IDs.             |
+| `start_gcp_latency_test`  | Start a bounded test from the visitor's browser.  |
+| `get_gcp_latency_results` | Poll status and compact, globally ranked results. |
+| `stop_gcp_latency_test`   | Stop a matching agent-started run.                |
+
+The measurement still runs in the open page and therefore measures the
+visitor's real browser-to-GCP latency. It is not a remote MCP server, which
+would measure from the server instead. Starting a test sends HTTPS requests to
+the selected regional endpoint operators, exposing normal request metadata such
+as the source IP; latency results remain in the page session and are not
+uploaded to GCP Speed Test.
+
+Current Site tool support requires a compatible WebMCP browser. OpenAI currently
+supports Site tools in the latest ChatGPT desktop built-in browser with
+GPT-5.6 Sol or Terra, subject to workspace and rollout availability. Other
+browsers retain the normal website without any behavior change because tool
+registration is feature-detected and browser-only.
+
+Example prompts:
+
+1. "List Google Cloud regions in Africa and Europe."
+2. "Test Johannesburg, London, and Iowa and tell me which is fastest."
+3. "Start a test of every European GCP region, check progress, then stop it."
+
+See [`docs/webmcp.md`](docs/webmcp.md) for the complete tool contract, security
+limits, compatibility notes, and implementation log.
+
 ## Architecture
 
 ### Why per-region responders?
@@ -31,7 +66,7 @@ same model used by Google's open-source [`gcping`][gcping].
 The free MVP reuses gcping's public Cloud Run endpoints (baked into
 `ui/src/assets/data/endpoints.json`). Those endpoints **do not send CORS
 headers**, so the browser can only ping them with `fetch(url, { mode: 'no-cors' })`.
-In `no-cors` mode the response is *opaque*: we can time it, but we cannot read
+In `no-cors` mode the response is _opaque_: we can time it, but we cannot read
 the status code or resource-timing details.
 
 The production upgrade path in this repo is **our own per-region Cloud Run
@@ -49,12 +84,12 @@ detailed resource timings, and the app can later add download throughput tests
 
 ### Repository layout
 
-| Path         | What it is                                                        |
-| ------------ | ----------------------------------------------------------------- |
-| `ui/`        | Angular app (the speed test UI). Backendless.                     |
-| `responder/` | Dependency-free Go HTTP responder deployed one-per-region.        |
-| `infra/`     | Terraform to build the image repo and deploy responders to GCP.   |
-| `.github/`   | CI (build/test UI) and a manual deploy workflow.                  |
+| Path         | What it is                                                      |
+| ------------ | --------------------------------------------------------------- |
+| `ui/`        | Angular app (the speed test UI). Backendless.                   |
+| `responder/` | Dependency-free Go HTTP responder deployed one-per-region.      |
+| `infra/`     | Terraform to build the image repo and deploy responders to GCP. |
+| `.github/`   | CI (build/test UI) and a manual deploy workflow.                |
 
 ## Run locally
 
@@ -243,3 +278,4 @@ Security posture and vulnerability reporting are documented in
 [terraform]: https://developer.hashicorp.com/terraform/install
 [docker]: https://docs.docker.com/get-docker/
 [freetier]: https://cloud.google.com/free
+[webmcp]: https://webmachinelearning.github.io/webmcp/

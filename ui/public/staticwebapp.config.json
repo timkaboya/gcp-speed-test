@@ -17,7 +17,8 @@
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
     "X-Frame-Options": "SAMEORIGIN",
-    "Permissions-Policy": "geolocation=(), microphone=(), camera=()"
+    "Origin-Agent-Cluster": "?1",
+    "Permissions-Policy": "geolocation=(), microphone=(), camera=(), tools=(self)"
   },
   "routes": [
     {

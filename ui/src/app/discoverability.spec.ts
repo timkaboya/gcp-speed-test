@@ -21,6 +21,9 @@ const read = (relativeToProjectRoot: string): string =>
 const robots = read('public/robots.txt')
 const llms = read('public/llms.txt')
 const sitemap = read('public/sitemap.xml')
+const staticWebAppConfig = JSON.parse(read('public/staticwebapp.config.json')) as {
+  globalHeaders?: Record<string, string>
+}
 const indexHtml = read('src/index.html')
 
 const siteOrigin = new URL(SITE_URL).origin
@@ -145,10 +148,30 @@ describe('llms.txt', () => {
     expect(internalPaths).toContain('/')
   })
 
+  it('advertises every WebMCP Site tool and its browser-local measurement model', () => {
+    for (const toolName of [
+      'list_gcp_regions',
+      'start_gcp_latency_test',
+      'get_gcp_latency_results',
+      'stop_gcp_latency_test'
+    ]) {
+      expect(llms).toContain(`\`${toolName}\``)
+    }
+    expect(llms).toContain("visitor's browser")
+    expect(llms).toMatch(/not\s+a remote MCP server/)
+  })
+
   it('keeps external references valid and intentional', () => {
     const external = urls.filter((url) => new URL(url).origin !== siteOrigin)
     // The only expected external link is the open-source repository.
     expect(external.some((url) => url.includes('github.com/timkaboya/gcp-speed-test'))).toBe(true)
+  })
+
+  describe('Site tool hosting headers', () => {
+    it('opts into an origin agent cluster and limits WebMCP tools to this origin', () => {
+      expect(staticWebAppConfig.globalHeaders?.['Origin-Agent-Cluster']).toBe('?1')
+      expect(staticWebAppConfig.globalHeaders?.['Permissions-Policy']).toContain('tools=(self)')
+    })
   })
 })
 

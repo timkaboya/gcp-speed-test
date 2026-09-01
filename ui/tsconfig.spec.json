@@ -6,7 +6,8 @@
     "outDir": "./out-tsc/spec",
     "resolveJsonModule": true,
     "types": [
-      "node"
+      "node",
+      "webmcp-types"
     ]
   },
   "include": [

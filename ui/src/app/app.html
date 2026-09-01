@@ -71,6 +71,18 @@
       </div>
     </header>
 
+    @if (webMcpStatus()) {
+      <div
+        class="border-b border-border-soft bg-primary/5 px-4 py-2 text-sm text-foreground lg:px-6"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        <span class="font-semibold">Site tool:</span>
+        {{ webMcpStatus() }}
+      </div>
+    }
+
     <!-- Page content -->
     <main
       id="main-content"
